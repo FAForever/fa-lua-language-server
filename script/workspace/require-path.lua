@@ -9,6 +9,9 @@ local scope     = require 'workspace.scope'
 ---@class require-path
 local m = {}
 
+---@param suri uri
+---@param uri uri
+---@param name string
 local function addRequireName(suri, uri, name)
     local separator    = config.get(uri, 'Lua.completion.requireSeparator')
     local fsname = name:gsub('%' .. separator, '/')
@@ -18,15 +21,17 @@ local function addRequireName(suri, uri, name)
     clt:subscribe(uri, fsname, name)
 end
 
---- `aaa/bbb/ccc.lua` 与 `?.lua` 将返回 `aaa.bbb.cccc`
+--- `aaa/bbb/ccc.lua` and `?.lua` returns `aaa.bbb.cccc`
+---@param uri uri
+---@param path string
+---@param searcher string
+---@return nil|string
 local function getOnePath(uri, path, searcher)
     local separator    = config.get(uri, 'Lua.completion.requireSeparator')
     local stemPath     = path
-                        : gsub('%.[^%.]+$', '')
-                        : gsub('[/\\%.]+', separator)
+                        : gsub('[/\\]+', separator)
     local stemSearcher = searcher
-                        : gsub('%.[^%.]+$', '')
-                        : gsub('[/\\%.]+', separator)
+                        : gsub('[/\\]+', separator)
     local start        = stemSearcher:match '()%?' or 1
     if stemPath:sub(1, start - 1) ~= stemSearcher:sub(1, start - 1) then
         return nil
@@ -41,7 +46,11 @@ local function getOnePath(uri, path, searcher)
     return nil
 end
 
+---@param suri string
+---@param path string
+---@return table<integer, {searcher:string, expect:string}>
 function m.getVisiblePath(suri, path)
+    ---@type string[]
     local searchers = config.get(suri, 'Lua.runtime.path')
     local strict    = config.get(suri, 'Lua.runtime.pathStrict')
     path = workspace.normalize(path)

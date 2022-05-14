@@ -1,7 +1,7 @@
 local scope = require 'workspace.scope'
 
 ---@class collector
----@field subscribed table<uri, table<string, any>>
+---@field subscribed table<uri, table<string, boolean>>
 ---@field collect table<string, table<uri, any>>
 local mt = {}
 mt.__index = mt
@@ -67,10 +67,17 @@ end
 
 local DUMMY_FUNCTION = function () end
 
+---@param nameCollect table<string, any>
 ---@param scp scope
+---@return fun():any,nil|string
 local function eachOfFolder(nameCollect, scp)
-    local curi, value
+    ---@type string
+    local curi
+    ---@type any
+    local value
 
+    ---@return nil|any
+    ---@return nil|string
     local function getNext()
         curi, value = next(nameCollect, curi)
         if not curi then
@@ -143,9 +150,10 @@ local function eachOfFallback(nameCollect, scp)
     return getNext
 end
 
---- 迭代某个名字的订阅
+--- Iterate over subscriptions by name
 ---@param uri  uri
 ---@param name string
+---@return fun():any,nil|string
 function mt:each(uri, name)
     uri = uri or '<fallback>'
     local nameCollect = self.collect[name]

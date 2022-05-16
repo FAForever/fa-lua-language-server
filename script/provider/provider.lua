@@ -22,6 +22,7 @@ local inspect    = require 'inspect'
 local markdown   = require 'provider.markdown'
 local guide      = require 'parser.guide'
 
+local configLoaded = false
 ---@async
 local function updateConfig(uri)
     config.addNullSymbol(json.null)
@@ -55,6 +56,7 @@ local function updateConfig(uri)
     log.info('Load config from client', 'fallback')
     log.debug(inspect(global))
     config.update(scope.fallback, global)
+    configLoaded = true
 end
 
 ---@class provider
@@ -235,6 +237,7 @@ m.register 'workspace/didRenameFiles' {
 }
 
 m.register 'textDocument/didOpen' {
+    ---@async
     function (params)
         local doc    = params.textDocument
         local scheme = furi.split(doc.uri)
@@ -243,10 +246,19 @@ m.register 'textDocument/didOpen' {
         end
         local uri    = files.getRealUri(doc.uri)
         log.debug('didOpen', uri)
-        local text  = doc.text
-        files.setText(uri, text, true, function (file)
-            file.version = doc.version
-        end)
+
+        -- there's a race condition between loading the config and this event getting called
+        -- put in a delay to try and fix it
+        if not configLoaded then
+            await.delay()
+        end
+        -- if still not loaded then don't set text
+        if configLoaded then
+            local text  = doc.text
+            files.setText(uri, text, true, function (file)
+                file.version = doc.version
+            end)
+        end
         files.open(uri)
     end
 }

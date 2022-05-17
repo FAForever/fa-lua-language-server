@@ -489,6 +489,7 @@ function m.compileState(uri, text)
             special           = config.get(uri, 'Lua.runtime.special'),
             unicodeName       = config.get(uri, 'Lua.runtime.unicodeName'),
             nonstandardSymbol = config.get(uri, 'Lua.runtime.nonstandardSymbol'),
+            exportEnvDefault  = config.get(uri, 'Lua.runtime.exportEnvDefault')
         }
     )
     local passed = os.clock() - clock

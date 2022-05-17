@@ -160,6 +160,7 @@ local Template = {
     ['Lua.runtime.plugin']                  = Type.String,
     ['Lua.runtime.fileEncoding']            = Type.String >> 'utf8',
     ['Lua.runtime.builtin']                 = Type.Hash(Type.String, Type.String),
+    ['Lua.runtime.exportEnvDefault']       = Type.Boolean >> false,
     ['Lua.diagnostics.enable']              = Type.Boolean >> true,
     ['Lua.diagnostics.globals']             = Type.Hash(Type.String, Type.Boolean, ';'),
     ['Lua.diagnostics.disable']             = Type.Hash(Type.String, Type.Boolean, ';'),

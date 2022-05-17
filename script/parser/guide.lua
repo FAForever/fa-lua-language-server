@@ -1135,6 +1135,21 @@ function m.getPath(a, b, sameFunction)
     return mode, resultA, resultB
 end
 
+---@return boolean
+function m.isExportEnv(state, options)
+    if (options.exportEnvDefault) then
+        for _, com in ipairs(state.comms) do
+            if com.text == '-@declare-global' then return false end
+            if com.text == '-@meta' then return false end
+        end
+    else
+        for _, com in ipairs(state.comms) do
+            if com.text == '-@export-env' then return true end
+        end
+    end
+    return options.exportEnvDefault
+end
+
 ---是否是全局变量（包括 _G.XXX 形式）
 ---@param source parser.object
 ---@return boolean

@@ -1031,6 +1031,22 @@ local docSwitch = util.switch()
             finish = getFinish(),
         }
     end)
+    : case 'export-env'
+    : call(function ()
+        return {
+            type   = 'doc.export-env',
+            start  = getFinish(),
+            finish = getFinish(),
+        }
+    end)
+    : case 'declare-global'
+    : call(function ()
+        return {
+            type   = 'doc.declare-global',
+            start  = getFinish(),
+            finish = getFinish(),
+        }
+    end)
     : case 'version'
     : call(function ()
         local result = {

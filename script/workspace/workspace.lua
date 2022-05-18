@@ -377,8 +377,9 @@ function m.getAbsolutePath(folderUri, path)
 end
 
 ---@param uriOrPath uri|string
+---@param startWithSlash boolean|nil
 ---@return string
-function m.getRelativePath(uriOrPath)
+function m.getRelativePath(uriOrPath, startWithSlash)
     local path, uri
     if uriOrPath:sub(1, 5) == 'file:' then
         path = furi.decode(uriOrPath)
@@ -394,10 +395,13 @@ function m.getRelativePath(uriOrPath)
     end
     local _, pos = m.normalize(path):find(furi.decode(scp.uri), 1, true)
     if pos then
-        return m.normalize(path:sub(pos + 1)):gsub('^[/\\]+', ''), true
-    else
-        return m.normalize(path):gsub('^[/\\]+', ''), false
+        path = path:sub(pos + 1)
     end
+    path = m.normalize(path)
+    if not startWithSlash then
+        path = path:gsub('^[/\\]+', '')
+    end
+    return path, pos ~= nil
 end
 
 ---@param scp scope

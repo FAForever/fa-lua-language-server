@@ -53,6 +53,7 @@ function m.getVisiblePath(suri, path)
     ---@type string[]
     local searchers = config.get(suri, 'Lua.runtime.path')
     local strict    = config.get(suri, 'Lua.runtime.pathStrict')
+    local separator = config.get(suri, 'Lua.completion.requireSeparator')
     path = workspace.normalize(path)
     local uri = furi.encode(path)
     local scp = scope.getScope(suri)
@@ -67,8 +68,8 @@ function m.getVisiblePath(suri, path)
         result = {}
         cache[path] = result
         for _, searcher in ipairs(searchers) do
-            local isAbsolute = searcher:match '^[/\\]'
-                            or searcher:match '^%a+%:'
+            local isAbsolute = searcher:match '^%a+%:'
+            local startsWithSlash = searcher:match '^[/\\]'
             searcher = workspace.normalize(searcher)
             local cutedPath = path
             local currentPath = path
@@ -78,7 +79,7 @@ function m.getVisiblePath(suri, path)
                 if libraryPath then
                     currentPath = currentPath:sub(#libraryPath + 2)
                 else
-                    currentPath = workspace.getRelativePath(uri)
+                    currentPath = workspace.getRelativePath(uri, startsWithSlash)
                 end
             end
             repeat
@@ -92,6 +93,9 @@ function m.getVisiblePath(suri, path)
                 end
                 local expect = getOnePath(suri, cutedPath, searcher)
                 if expect then
+                    if startsWithSlash then
+                        expect = separator .. expect
+                    end
                     local mySearcher = searcher
                     if head then
                         mySearcher = head .. searcher

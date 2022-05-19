@@ -2277,7 +2277,10 @@ local function parseFunction(isLocal, isAction)
         local name = parseName()
         if name then
             local simple = parseSimple(name, true)
-            if isLocal or State.hasExportEnv then
+            -- treat global as local when we want to export env the type is a simple name
+            -- this is to avoid picking up getField names like `function m.Function()`
+            local shouldExport = State.hasExportEnv and simple.type == 'name' and not isLocal
+            if isLocal or shouldExport then
                 if simple == name then
                     createLocal(name)
                 else
@@ -2291,7 +2294,7 @@ local function parseFunction(isLocal, isAction)
             else
                 resolveName(name)
             end
-            if (not isLocal) and State.hasExportEnv then
+            if shouldExport then
                 name.export = true
             end
             func.name   = simple

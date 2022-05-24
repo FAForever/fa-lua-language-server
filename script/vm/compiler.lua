@@ -257,17 +257,20 @@ function vm.getClassFields(suri, object, key, ref, pushResult)
                                 end
                             end
                         end)
-                        if src.value and src.value.type == 'table' then
-                            searchFieldSwitch('table', suri, src.value, key, ref, function (field)
-                                local fieldKey = guide.getKeyName(field)
-                                if fieldKey then
-                                    if  not searchedFields[fieldKey]
-                                    and guide.isSet(field) then
-                                        hasFounded[fieldKey] = true
-                                        pushResult(field)
+                        if src.value then
+                            local compiled = src.value.type == "table" and {src.value} or vm.compileNode(src.value)
+                            for _, value in ipairs(compiled) do
+                                searchFieldSwitch(value.type, suri, value, key, ref, function (field)
+                                    local fieldKey = guide.getKeyName(field)
+                                    if fieldKey then
+                                        if  not searchedFields[fieldKey]
+                                        and guide.isSet(field) then
+                                            hasFounded[fieldKey] = true
+                                            pushResult(field)
+                                        end
                                     end
-                                end
-                            end)
+                                end)
+                            end
                         end
                     end
                 end

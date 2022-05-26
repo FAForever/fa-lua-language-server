@@ -3907,7 +3907,7 @@ return function (lua, mode, version, options)
     Mode = mode
     initState(lua, version, options)
     skipSpace()
-    State.hasExportEnv = guide.isExportEnv(State, options)
+    State.hasExportEnv = guide.isExportEnv(State)
     if     mode == 'Lua' then
         State.ast = parseLua()
     elseif mode == 'Nil' then

@@ -1136,8 +1136,8 @@ function m.getPath(a, b, sameFunction)
 end
 
 ---@return boolean
-function m.isExportEnv(state, options)
-    if (options.exportEnvDefault) then
+function m.isExportEnv(state)
+    if (state.options.exportEnvDefault) then
         for _, com in ipairs(state.comms) do
             if com.text == '-@declare-global' then return false end
             if com.text == '-@meta' then return false end
@@ -1147,7 +1147,7 @@ function m.isExportEnv(state, options)
             if com.text == '-@export-env' then return true end
         end
     end
-    return options.exportEnvDefault
+    return state.options.exportEnvDefault
 end
 
 ---是否是全局变量（包括 _G.XXX 形式）

@@ -40,7 +40,7 @@ local function getOnePath(uri, path, searcher)
         local word = stemPath:sub(start, pos)
         local newSearcher = stemSearcher:gsub('%?', (word:gsub('%%', '%%%%')))
         if newSearcher == stemPath then
-            return word
+            return word:lower()
         end
     end
     return nil
@@ -119,7 +119,7 @@ function m.findUrisByRequirePath(suri, path)
         return {}
     end
     local separator = config.get(suri, 'Lua.completion.requireSeparator')
-    local fspath = path:gsub('%' .. separator, '/')
+    local fspath = path:gsub('%' .. separator, '/'):lower()
     tracy.ZoneBeginN('findUrisByRequirePath')
     local results = {}
     local searchers = {}

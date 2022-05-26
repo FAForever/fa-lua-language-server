@@ -260,16 +260,19 @@ function vm.getClassFields(suri, object, key, ref, pushResult)
                         if src.value then
                             local compiled = src.value.type == "table" and {src.value} or vm.compileNode(src.value)
                             for _, value in ipairs(compiled) do
-                                searchFieldSwitch(value.type, suri, value, key, ref, function (field)
-                                    local fieldKey = guide.getKeyName(field)
-                                    if fieldKey then
-                                        if  not searchedFields[fieldKey]
-                                        and guide.isSet(field) then
-                                            hasFounded[fieldKey] = true
-                                            pushResult(field)
+                                -- prevent recursive loop when a class is defined multiple times
+                                if (value ~= class) then
+                                    searchFieldSwitch(value.type, suri, value, key, ref, function (field)
+                                        local fieldKey = guide.getKeyName(field)
+                                        if fieldKey then
+                                            if  not searchedFields[fieldKey]
+                                            and guide.isSet(field) then
+                                                hasFounded[fieldKey] = true
+                                                pushResult(field)
+                                            end
                                         end
-                                    end
-                                end)
+                                    end)
+                                end
                             end
                         end
                     end

@@ -77,7 +77,7 @@ function m.getVisiblePath(suri, path)
             local pos = 1
             if not isAbsolute then
                 if libraryPath then
-                    currentPath = currentPath:sub(#libraryPath + 2)
+                    currentPath = currentPath:sub(#libraryPath + (startsWithSlash and 1 or 2))
                 else
                     currentPath = workspace.getRelativePath(uri, startsWithSlash)
                 end

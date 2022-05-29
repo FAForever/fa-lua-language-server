@@ -19,6 +19,16 @@ local m = {}
 
 m.metaPaths = {}
 
+---@class Config3rdParty
+---@field path string
+---@field name string
+---@field dirname string
+---@field plugin boolean
+---@field words string[]|nil
+---@field files string[]|nil
+---@field configs config.change[]
+
+
 local function getDocFormater(uri)
     local version = config.get(uri, 'Lua.runtime.version')
     if client.isVSCode() then
@@ -269,6 +279,7 @@ local function loadSingle3rdConfig(libraryDir)
     local env = setmetatable({}, { __index = _G })
     assert(load(configText, '@' .. libraryDir:string(), 't', env))()
 
+    ---@type Config3rdParty
     local cfg = {}
 
     cfg.path = libraryDir:filename():string()
@@ -330,6 +341,9 @@ local function load3rdConfig(uri)
     return configs
 end
 
+---@param uri string
+---@param cfg Config3rdParty
+---@param onlyMemory boolean
 local function apply3rd(uri, cfg, onlyMemory)
     local changes = {}
     if cfg.configs then
@@ -365,6 +379,9 @@ end
 
 local hasAsked
 ---@async
+---@param uri string
+---@param cfg Config3rdParty
+---@return nil
 local function askFor3rd(uri, cfg)
     if hasAsked then
         return nil
@@ -420,6 +437,9 @@ local function wholeMatch(a, b)
     return true
 end
 
+---@param uri string
+---@param text string
+---@param configs Config3rdParty[]
 local function check3rdByWords(uri, text, configs)
     if hasAsked then
         return
@@ -472,6 +492,7 @@ local function checkedUri(uri)
     return true
 end
 
+---@type Config3rdParty[]
 local thirdConfigs
 local function check3rd(uri)
     if hasAsked then

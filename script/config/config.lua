@@ -211,9 +211,7 @@ local Template = {
     ['Lua.window.statusBar']                = Type.Boolean >> true,
     ['Lua.window.progressBar']              = Type.Boolean >> true,
     ['Lua.format.enable']                   = Type.Boolean >> true,
-    ['Lua.format.defaultConfig']            = Type.Hash(Type.String, Type.String)
-                                            >> {},
-    ['Lua.telemetry.enable']                = Type.Or(Type.Boolean >> false, Type.Nil) >> nil,
+    ['Lua.format.defaultConfig']            = Type.Hash(Type.String, Type.String) >> {},
     ['files.associations']                  = Type.Hash(Type.String, Type.String),
     ['files.exclude']                       = Type.Hash(Type.String, Type.Boolean),
     ['editor.semanticHighlighting.enabled'] = Type.Or(Type.Boolean, Type.String),

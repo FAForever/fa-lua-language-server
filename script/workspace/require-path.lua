@@ -14,7 +14,7 @@ local m = {}
 ---@param name string
 local function addRequireName(suri, uri, name)
     local separator    = config.get(uri, 'Lua.completion.requireSeparator')
-    local fsname = name:gsub('%' .. separator, '/')
+    local fsname = name:gsub('%' .. separator, '/'):lower()
     local scp = scope.getScope(suri)
     ---@type collector
     local clt = scp:get('requireName') or scp:set('requireName', collector())
@@ -40,7 +40,7 @@ local function getOnePath(uri, path, searcher)
         local word = stemPath:sub(start, pos)
         local newSearcher = stemSearcher:gsub('%?', (word:gsub('%%', '%%%%')))
         if newSearcher == stemPath then
-            return word:lower()
+            return word
         end
     end
     return nil
@@ -139,7 +139,7 @@ function m.findUrisByRequirePath(suri, path)
             if uri ~= suri then
                 local infos = m.getVisiblePath(suri, furi.decode(uri))
                 for _, info in ipairs(infos) do
-                    local fsexpect = info.expect:gsub('%' .. separator, '/')
+                    local fsexpect = info.expect:gsub('%' .. separator, '/'):lower()
                     if fsexpect == fspath then
                         results[#results+1] = uri
                         searchers[uri] = info.searcher

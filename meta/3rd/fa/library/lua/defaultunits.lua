@@ -38,7 +38,7 @@ StructureUnit = Class(Unit) {
     OnCreate = function(self)
         Unit.OnCreate(self)
         self:HideLandBones()
-        self.WeaponMod = {}
+        self.AdjacentUnits = {}
         self.FxBlinkingLightsBag = {}
         if self.Layer == 'Land' and self.Blueprint.Physics.FlattenSkirt then
             self:FlattenSkirt()
@@ -1179,6 +1179,7 @@ MassFabricationUnit = Class(StructureUnit) {
         end
     end,
 
+    ---@param self MassFabricationUnit
     OnStopBeingBuilt = function(self, builder, layer)
         StructureUnit.OnStopBeingBuilt(self, builder, layer)
         self:SetMaintenanceConsumptionActive()

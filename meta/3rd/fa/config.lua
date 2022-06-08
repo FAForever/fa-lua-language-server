@@ -16,6 +16,11 @@ configs = {
         value  = '/?',
     },
     {
+        key    = 'Lua.completion.showWord',
+        action = 'set',
+        value  = 'Disable',
+    },
+    {
         key    = 'Lua.runtime.special',
         action = 'prop',
         prop   = 'import',

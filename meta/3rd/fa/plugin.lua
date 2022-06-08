@@ -9,15 +9,7 @@
 function OnSetText(uri, text)
     local diffs = {}
 
-    local pos = text:match('^%s*()#')
-    if pos ~= nil then
-        diffs[#diffs + 1] = {
-            start = pos,
-            finish = pos,
-            text = '--'
-        }
-    end
-    for pos in text:gmatch '\r\n%s*()#' do
+    for pos in text:gmatch '()#' do
         diffs[#diffs + 1] = {
             start = pos,
             finish = pos,

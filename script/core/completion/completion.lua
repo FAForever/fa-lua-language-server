@@ -184,7 +184,7 @@ local function buildFunctionSnip(source, value, oop)
 end
 
 local function buildDetail(source)
-    local types = vm.getInfer(source):view()
+    local types = vm.getInfer(source):view(guide.getUri(source))
     local literals = vm.getInfer(source):viewLiterals()
     if literals then
         return types .. ' = ' .. literals
@@ -302,7 +302,7 @@ local function checkLocal(state, word, position, results)
         if name:sub(1, 1) == '@' then
             goto CONTINUE
         end
-        if vm.getInfer(source):hasFunction() then
+        if vm.getInfer(source):hasFunction(state.uri) then
             local defs = vm.getDefs(source)
             -- make sure `function` is before `doc.type.function`
             local orders = {}
@@ -356,6 +356,7 @@ local function checkModule(state, word, position, results)
     if not config.get(state.uri, 'Lua.completion.autoRequire') then
         return
     end
+    local globals = util.arrayToHash(config.get(state.uri, 'Lua.diagnostics.globals'))
     local locals = guide.getVisibleLocals(state.ast, position)
     for uri in files.eachFile(state.uri) do
         if uri == guide.getUri(state.ast) then
@@ -366,7 +367,7 @@ local function checkModule(state, word, position, results)
         local stemName = fileName:gsub('%..+', '')
         if  not locals[stemName]
         and not vm.hasGlobalSets(state.uri, 'variable', stemName)
-        and not config.get(state.uri, 'Lua.diagnostics.globals')[stemName]
+        and not globals[stemName]
         and stemName:match '^[%a_][%w_]*$'
         and matchKey(word, stemName) then
             local targetState = files.getState(uri)
@@ -512,7 +513,7 @@ local function checkFieldThen(state, name, src, word, startPos, position, parent
         })
         return
     end
-    if oop and not vm.getInfer(src):hasFunction() then
+    if oop and not vm.getInfer(src):hasFunction(state.uri) then
         return
     end
     local literal = guide.getLiteral(value)
@@ -1098,7 +1099,7 @@ local function tryLabelInString(label, source)
     if not source or source.type ~= 'string' then
         return label
     end
-    local state = parser.parse(label, 'String')
+    local state = parser.compile(label, 'String')
     if not state or not state.ast then
         return label
     end
@@ -1131,7 +1132,13 @@ local function checkTypingEnum(state, position, defs, str, results)
         or def.type == 'doc.type.integer'
         or def.type == 'doc.type.boolean' then
             enums[#enums+1] = {
-                label       = vm.viewObject(def),
+                label       = vm.viewObject(def, state.uri),
+                description = def.comment and def.comment.text,
+                kind        = define.CompletionItemKind.EnumMember,
+            }
+        elseif def.type == 'doc.type.code' then
+            enums[#enums+1] = {
+                label       = def[1],
                 description = def.comment and def.comment.text,
                 kind        = define.CompletionItemKind.EnumMember,
             }
@@ -1420,7 +1427,13 @@ local function tryCallArg(state, position, results)
         or src.type == 'doc.type.integer'
         or src.type == 'doc.type.boolean' then
             enums[#enums+1] = {
-                label       = vm.viewObject(src),
+                label       = vm.viewObject(src, state.uri),
+                description = src.comment,
+                kind        = define.CompletionItemKind.EnumMember,
+            }
+        elseif src.type == 'doc.type.code' then
+            enums[#enums+1] = {
+                label       = src[1],
                 description = src.comment,
                 kind        = define.CompletionItemKind.EnumMember,
             }
@@ -1439,7 +1452,7 @@ local function tryCallArg(state, position, results)
                     : string()
             end
             enums[#enums+1] = {
-                label       = vm.getInfer(src):view(),
+                label       = vm.getInfer(src):view(state.uri),
                 description = description,
                 kind        = define.CompletionItemKind.Function,
                 insertText  = insertText,
@@ -1535,6 +1548,7 @@ local function tryluaDocCate(word, results)
             results[#results+1] = {
                 label       = docType,
                 kind        = define.CompletionItemKind.Event,
+                description = lang.script('LUADOC_DESC_' .. docType:upper())
             }
         end
     end
@@ -1820,14 +1834,14 @@ local function buildluaDocOfFunction(func)
     local returns = {}
     if func.args then
         for _, arg in ipairs(func.args) do
-            args[#args+1] = vm.getInfer(arg):view()
+            args[#args+1] = vm.getInfer(arg):view(guide.getUri(func))
         end
     end
     if func.returns then
         for _, rtns in ipairs(func.returns) do
             for n = 1, #rtns do
                 if not returns[n] then
-                    returns[n] = vm.getInfer(rtns[n]):view()
+                    returns[n] = vm.getInfer(rtns[n]):view(guide.getUri(func))
                 end
             end
         end

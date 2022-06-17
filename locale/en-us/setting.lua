@@ -56,14 +56,22 @@ config.diagnostics.workspaceRate  =
 "Workspace diagnostics run rate (%). Decreasing this value reduces CPU usage, but also reduces the speed of workspace diagnostics. The diagnosis of the file you are currently editing is always done at full speed and is not affected by this setting."
 config.diagnostics.libraryFiles   =
 "How to diagnose files loaded via `Lua.workspace.library`."
+config.diagnostics.libraryFiles.Enable   =
+"Always diagnose these files."
+config.diagnostics.libraryFiles.Opened   =
+"Only when these files are opened will it be diagnosed."
+config.diagnostics.libraryFiles.Disable  =
+"These files are not diagnosed."
 config.diagnostics.ignoredFiles   =
 "How to diagnose ignored files."
-config.diagnostics.files.Enable   =
+config.diagnostics.ignoredFiles.Enable   =
 "Always diagnose these files."
-config.diagnostics.files.Opened   =
+config.diagnostics.ignoredFiles.Opened   =
 "Only when these files are opened will it be diagnosed."
-config.diagnostics.files.Disable  =
+config.diagnostics.ignoredFiles.Disable  =
 "These files are not diagnosed."
+config.diagnostics.disableScheme  =
+'Do not diagnose Lua files that use the following scheme.'
 config.workspace.ignoreDir        =
 "Ignored files and directories (Use `.gitignore` grammar)."-- .. example.ignoreDir,
 config.workspace.ignoreSubmodules =
@@ -89,6 +97,8 @@ Automatic detection and adaptation of third-party libraries, currently supported
 ]]
 config.workspace.userThirdParty          =
 'Add private third-party library configuration file paths here, please refer to the built-in [configuration file path](https://github.com/sumneko/lua-language-server/tree/master/meta/3rd)'
+config.workspace.supportScheme           =
+'Provide language server for the Lua files of the following scheme.'
 config.completion.enable                 =
 'Enable completion.'
 config.completion.callSnippet            =
@@ -159,6 +169,10 @@ config.hover.previewFields               =
 "When hovering to view a table, limits the maximum number of previews for fields."
 config.hover.enumsLimit                  =
 "When the value corresponds to multiple types, limit the number of types displaying."
+config.hover.expandAlias                 =
+[[
+Whether to expand the alias. For example, expands `---@alias myType boolean|number` appears as `boolean|number`, otherwise it appears as `myType'.
+]]
 config.develop.enable                    =
 'Developer mode. Do not enable, performance will be affected.'
 config.develop.debuggerPort              =
@@ -195,6 +209,8 @@ config.hint.arrayIndex.Auto              =
 'Show hints only when the table is greater than 3 items, or the table is a mixed table.'
 config.hint.arrayIndex.Disable           =
 'Disable hints of array index.'
+config.hint.await                        =
+'If the called function is marked `---@async`, prompt `await` at the call.'
 config.format.enable                     =
 'Enable code formatter.'
 config.telemetry.enable                  =

@@ -2,6 +2,7 @@ local files    = require 'files'
 ---@class vm
 local vm       = require 'vm.vm'
 local ws       = require 'workspace.workspace'
+local guide    = require 'parser.guide'
 
 ---@type table<vm.object, vm.node>
 vm.nodeCache = {}
@@ -105,6 +106,18 @@ function mt:hasFalsy()
     return false
 end
 
+function mt:hasKnownType()
+    for _, c in ipairs(self) do
+        if c.type == 'global' and c.cate == 'type' then
+            return true
+        end
+        if guide.isLiteral(c) then
+            return true
+        end
+    end
+    return false
+end
+
 ---@return boolean
 function mt:isNullable()
     if self.optional then
@@ -152,6 +165,7 @@ function mt:setTruthy()
     if hasBoolean then
         self[#self+1] = vm.declareGlobal('type', 'true')
     end
+    return self
 end
 
 ---@return vm.node
@@ -174,12 +188,19 @@ function mt:setFalsy()
             hasBoolean = true
             table.remove(self, index)
             self[c] = nil
+            goto CONTINUE
+        end
+        if (c.type == 'global' and c.cate == 'type') then
+            table.remove(self, index)
+            self[c] = nil
+            goto CONTINUE
         end
         ::CONTINUE::
     end
     if hasBoolean then
         self[#self+1] = vm.declareGlobal('type', 'false')
     end
+    return self
 end
 
 ---@param name string
@@ -200,6 +221,33 @@ function mt:remove(name)
             self[c] = nil
         end
     end
+    return self
+end
+
+---@param name string
+function mt:narrow(name)
+    if name ~= 'nil' and self.optional == true then
+        self.optional = nil
+    end
+    for index = #self, 1, -1 do
+        local c = self[index]
+        if (c.type == 'global' and c.cate == 'type' and c.name == name)
+        or (c.type == name)
+        or (c.type == 'doc.type.integer'  and (name == 'number' or name == 'integer'))
+        or (c.type == 'doc.type.boolean'  and name == 'boolean')
+        or (c.type == 'doc.type.table'    and name == 'table')
+        or (c.type == 'doc.type.array'    and name == 'table')
+        or (c.type == 'doc.type.function' and name == 'function') then
+            goto CONTINUE
+        end
+        table.remove(self, index)
+        self[c] = nil
+        ::CONTINUE::
+    end
+    if #self == 0 then
+        self[#self+1] = vm.getGlobal('type', name)
+    end
+    return self
 end
 
 ---@param node vm.node
@@ -207,6 +255,14 @@ function mt:removeNode(node)
     for _, c in ipairs(node) do
         if c.type == 'global' and c.cate == 'type' then
             self:remove(c.name)
+        elseif c.type == 'nil' then
+            self:remove 'nil'
+        elseif c.type == 'boolean' then
+            if c[1] == true then
+                self:remove 'true'
+            else
+                self:remove 'false'
+            end
         end
     end
 end
@@ -313,5 +369,11 @@ files.watch(function (ev, uri)
         if ws.isReady(uri) then
             vm.clearNodeCache()
         end
+    end
+end)
+
+ws.watch(function (ev, uri)
+    if ev == 'reload' then
+        vm.clearNodeCache()
     end
 end)

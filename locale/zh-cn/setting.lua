@@ -56,14 +56,22 @@ config.diagnostics.workspaceRate  =
 "工作区诊断的运行速率（百分比）。降低该值会减少CPU占用，但是也会降低工作区诊断的速度。你当前正在编辑的文件的诊断总是全速完成，不受该选项影响。"
 config.diagnostics.libraryFiles   =
 "如何诊断通过 `Lua.workspace.library` 加载的文件。"
+config.diagnostics.libraryFiles.Enable   =
+"总是诊断这些文件。"
+config.diagnostics.libraryFiles.Opened   =
+"只有打开这些文件时才会诊断。"
+config.diagnostics.libraryFiles.Disable  =
+"不诊断这些文件。"
 config.diagnostics.ignoredFiles   =
 "如何诊断被忽略的文件。"
-config.diagnostics.files.Enable   =
+config.diagnostics.ignoredFiles.Enable   =
 "总是诊断这些文件。"
-config.diagnostics.files.Opened   =
+config.diagnostics.ignoredFiles.Opened   =
 "只有打开这些文件时才会诊断。"
-config.diagnostics.files.Disable  =
+config.diagnostics.ignoredFiles.Disable  =
 "不诊断这些文件。"
+config.diagnostics.disableScheme  =
+'不诊断使用以下 scheme 的lua文件。'
 config.workspace.ignoreDir        =
 "忽略的文件与目录（使用 `.gitignore` 语法）。"
 config.workspace.ignoreSubmodules =
@@ -89,6 +97,8 @@ config.workspace.checkThirdParty  =
 ]]
 config.workspace.userThirdParty          =
 '在这里添加私有的第三方库适配文件路径，请参考内置的[配置文件路径](https://github.com/sumneko/lua-language-server/tree/master/meta/3rd)'
+config.workspace.supportScheme           =
+'为以下 scheme 的lua文件提供语言服务。'
 config.completion.enable                 =
 '启用自动完成。'
 config.completion.callSnippet            =
@@ -159,6 +169,10 @@ config.hover.previewFields               =
 "悬停提示查看表时，限制表内字段的最大预览数量。"
 config.hover.enumsLimit                  =
 "当值对应多个类型时，限制类型的显示数量。"
+config.hover.expandAlias                 =
+[[
+是否展开别名。例如 `---@alias myType boolean|number` 展开后显示为 `boolean|number`，否则显示为 `myType`。
+]]
 config.develop.enable                    =
 '开发者模式。请勿开启，会影响性能。'
 config.develop.debuggerPort              =
@@ -195,6 +209,8 @@ config.hint.arrayIndex.Auto              =
 '只有表大于3项，或者表是混合类型时才进行提示。'
 config.hint.arrayIndex.Disable           =
 '禁用数组索引提示。'
+config.hint.await                        =
+'如果调用的函数被标记为了 `---@async` ，则在调用处提示 `await` 。'
 config.format.enable                     =
 '启用代码格式化程序。'
 config.telemetry.enable                  =

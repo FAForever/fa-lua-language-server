@@ -239,9 +239,10 @@ m.register 'workspace/didRenameFiles' {
 m.register 'textDocument/didOpen' {
     ---@async
     function (params)
-        local doc    = params.textDocument
-        local scheme = furi.split(doc.uri)
-        if scheme ~= 'file' then
+        local doc      = params.textDocument
+        local scheme   = furi.split(doc.uri)
+        local supports = config.get(doc.uri, 'Lua.workspace.supportScheme')
+        if not util.arrayHas(supports, scheme) then
             return
         end
         local uri    = files.getRealUri(doc.uri)
@@ -276,15 +277,21 @@ m.register 'textDocument/didClose' {
 }
 
 m.register 'textDocument/didChange' {
+    ---@async
     function (params)
-        local doc     = params.textDocument
-        local scheme = furi.split(doc.uri)
-        if scheme ~= 'file' then
+        local doc      = params.textDocument
+        local scheme   = furi.split(doc.uri)
+        local supports = config.get(doc.uri, 'Lua.workspace.supportScheme')
+        if not util.arrayHas(supports, scheme) then
             return
         end
         local changes = params.contentChanges
         local uri     = files.getRealUri(doc.uri)
-        local text = files.getOriginText(uri) or ''
+        local text = files.getOriginText(uri)
+        if not text then
+            files.setText(uri, pub.awaitTask('loadFile', furi.decode(uri)), false)
+            return
+        end
         local rows = files.getCachedRows(uri)
         text, rows = tm(text, rows, changes)
         files.setText(uri, text, true, function (file)
@@ -1219,6 +1226,94 @@ m.register 'inlayHint/resolve' {
     ---@async
     function (hint)
         return hint
+    end
+}
+
+m.register 'textDocument/diagnostic' {
+    preview = true,
+    capability = {
+        diagnosticProvider = {
+            identifier            = 'identifier',
+            interFileDependencies = true,
+            workspaceDiagnostics  = false,
+        }
+    },
+    ---@async
+    function (params)
+        local uri = files.getRealUri(params.textDocument.uri)
+        workspace.awaitReady(uri)
+        local core = require 'provider.diagnostic'
+        -- TODO: do some trick
+        core.doDiagnostic(uri)
+
+        return {
+            kind = 'unchanged',
+            resultId = uri,
+        }
+
+        --if not params.previousResultId then
+        --    core.clearCache(uri)
+        --end
+        --local results, unchanged = core.pullDiagnostic(uri, false)
+        --if unchanged then
+        --    return {
+        --        kind = 'unchanged',
+        --        resultId = uri,
+        --    }
+        --else
+        --    return {
+        --        kind = 'full',
+        --        resultId = uri,
+        --        items = results or {},
+        --    }
+        --end
+    end
+}
+
+m.register 'workspace/diagnostic' {
+    --preview = true,
+    --capability = {
+    --    diagnosticProvider = {
+    --        workspaceDiagnostics  = false,
+    --    }
+    --},
+    ---@async
+    function (params)
+        local core = require 'provider.diagnostic'
+        local excepts = {}
+        for _, id in ipairs(params.previousResultIds) do
+            excepts[#excepts+1] = id.value
+        end
+        core.clearCacheExcept(excepts)
+        local function convertItem(result)
+            if result.unchanged then
+                return {
+                    kind     = 'unchanged',
+                    resultId = result.uri,
+                    uri      = result.uri,
+                    version  = result.version,
+                }
+            else
+                return {
+                    kind     = 'full',
+                    resultId = result.uri,
+                    items    = result.result or {},
+                    uri      = result.uri,
+                    version  = result.version,
+                }
+            end
+        end
+        core.pullDiagnosticScope(function (result)
+            proto.notify('$/progress', {
+                token = params.partialResultToken,
+                value = {
+                    items = {
+                        convertItem(result)
+                    }
+                }
+            })
+        end)
+        return { items = {} }
     end
 }
 

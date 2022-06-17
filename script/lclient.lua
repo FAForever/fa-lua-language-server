@@ -208,8 +208,10 @@ function mt:registerFakers()
         'textDocument/publishDiagnostics',
         'workspace/configuration',
         'workspace/semanticTokens/refresh',
+        'workspace/diagnostic/refresh',
         'window/workDoneProgress/create',
         'window/showMessage',
+        'window/showMessageRequest',
         'window/logMessage',
     } do
         self:register(method, function ()

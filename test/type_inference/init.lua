@@ -31,9 +31,9 @@ function TEST(wanted)
         files.setText('', newScript)
         local source = getSource(catched['?'][1][1])
         assert(source)
-        local result = vm.getInfer(source):view()
+        local result = vm.getInfer(source):view('')
         if wanted ~= result then
-            vm.getInfer(source):view()
+            vm.getInfer(source):view('')
         end
         assert(wanted == result)
         files.remove('')
@@ -152,6 +152,10 @@ TEST 'integer' [[
 
 TEST 'integer' [[
 <?x?> = ~ 1
+]]
+
+TEST 'boolean' [[
+<?x?> = 1 < 2
 ]]
 
 TEST 'integer' [[
@@ -1813,6 +1817,17 @@ TEST 'integer' [[
 ---@type integer?
 local x
 
+if not x then
+    return
+end
+
+print(<?x?>)
+]]
+
+TEST 'integer' [[
+---@type integer?
+local x
+
 if xxx and x then
     print(<?x?>)
 end
@@ -2153,6 +2168,15 @@ print(<?x?>)
 ]]
 
 TEST 'integer' [[
+---@type integer?
+local x
+
+while x do
+    print(<?x?>)
+end
+]]
+
+TEST 'integer' [[
 ---@type fun():integer?
 local iter
 
@@ -2237,6 +2261,19 @@ local x
 print(<?x?>)
 ]]
 
+TEST 'unknown?' [[
+---@type string?
+local x
+
+if x then
+    return
+else
+    print(<?x?>)
+end
+
+print(x)
+]]
+
 TEST 'string' [[
 ---@type string?
 local x
@@ -2296,4 +2333,320 @@ if t then
 end
 
 print(<?t?>)
+]]
+
+TEST 'unknown?' [[
+---@type integer?
+local t
+
+if t then
+else
+    print(<?t?>)
+end
+
+print(t)
+]]
+
+TEST 'table|unknown' [[
+local function f()
+    if x then
+        return y
+    end
+    return {}
+end
+
+local <?z?> = f()
+]]
+
+TEST 'number|table' [[
+local function returnI()
+    return a + 1
+end
+
+local function f()
+    if x then
+        return returnI()
+    end
+    return {}
+end
+
+local <?z?> = f()
+]]
+
+TEST 'number' [[
+for _ in _ do
+    ---@type number
+    local <?x?>
+end
+]]
+
+TEST 'unknown' [[
+for _ in _ do
+    ---@param x number
+    local <?x?>
+end
+]]
+
+TEST 'unknown' [[
+---@type number
+for <?x?> in _ do
+end
+]]
+
+TEST 'number' [[
+---@param x number
+for <?x?> in _ do
+end
+]]
+
+TEST 'table' [[
+---@alias tp table
+
+---@type tp
+local <?x?>
+]]
+
+TEST 'table' [[
+---@alias tp {name: boolean}
+
+---@type tp
+local <?x?>
+]]
+
+TEST 'boolean|table' [[
+---@alias tp boolean | {name: boolean}
+
+---@type tp
+local <?x?>
+]]
+
+TEST '`1`|`true`' [[
+---@type `1` | `true`
+local <?x?>
+]]
+
+TEST 'function' [[
+local x
+
+function x() end
+
+print(<?x?>)
+]]
+
+TEST 'unknown' [[
+local x
+
+if x.field == 'haha' then
+    print(<?x?>)
+end
+]]
+
+TEST 'string' [[
+---@type string?
+local t
+
+if not t or xxx then
+    return
+end
+
+print(<?t?>)
+]]
+
+TEST 'table' [[
+---@type table|nil
+local t
+
+return function ()
+    if not t then
+        return
+    end
+    
+    print(<?t?>)
+end
+]]
+
+TEST 'table' [[
+---@type table|nil
+local t
+
+f(function ()
+    if not t then
+        return
+    end
+    
+    print(<?t?>)
+end)
+]]
+
+TEST 'table' [[
+---@type table?
+local t
+
+t = t or {}
+
+print(<?t?>)
+]]
+
+TEST 'unknown|nil' [[
+local x
+
+if x == nil then
+end
+
+print(<?x?>)
+]]
+
+TEST 'table<unknown, true>' [[
+---@alias xxx table<xxx, true>
+
+---@type xxx
+local <?t?>
+]]
+
+TEST 'unknown[][]' [[
+---@alias xxx xxx[]
+
+---@type xxx
+local <?t?>
+]]
+
+TEST 'fun(x: fun(x: unknown))' [[
+---@alias xxx fun(x: xxx)
+
+---@type xxx
+local <?t?>
+]]
+
+TEST 'table' [[
+---@type table|nil
+local t
+
+while t do
+    print(<?t?>)
+end
+]]
+
+TEST 'table|nil' [[
+---@type table|nil
+local t
+
+while <?t?> do
+    print(t)
+end
+]]
+
+TEST 'table' [[
+---@type table|nil
+local t
+
+while t ~= nil do
+    print(<?t?>)
+end
+]]
+
+TEST 'table|nil' [[
+---@type table|nil
+local t
+
+while <?t?> ~= nil do
+    print(t)
+end
+]]
+
+TEST 'integer' [[
+---@type integer?
+local n
+
+if not n then
+    error('n is nil')
+end
+
+print(<?n?>)
+]]
+
+TEST 'table' [[
+---@type table?
+local n
+
+print((n and <?n?>.x))
+]]
+
+TEST 'table' [[
+---@type table?
+local n
+
+n = n and <?n?>.x or 1
+]]
+
+TEST 'table' [[
+---@type table?
+local n
+
+n = ff[n and <?n?>.x]
+]]
+
+TEST 'integer' [[
+local x
+
+if type(x) == 'integer' then
+    print(<?x?>)
+end
+]]
+
+TEST 'boolean|integer' [[
+local x
+
+if type(x) == 'integer'
+or type(x) == 'boolean' then
+    print(<?x?>)
+end
+]]
+
+TEST 'fun()' [[
+---@type fun()?
+local x
+
+if type(x) == 'function' then
+    print(<?x?>)
+end
+]]
+
+TEST 'function' [[
+local x
+
+if type(x) == 'function' then
+    print(<?x?>)
+end
+]]
+
+TEST 'integer' [[
+local x
+local tp = type(x)
+
+if tp == 'integer' then
+    print(<?x?>)
+end
+]]
+
+TEST 'integer' [[
+---@type integer?
+local x
+
+if (x == nil) then
+else
+    print(<?x?>)
+end
+]]
+
+TEST 'B' [[
+---@class A
+---@class B
+
+---@type A
+local x
+
+---@type B
+x = call(x)
+
+print(<?x?>)
 ]]

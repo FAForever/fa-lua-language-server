@@ -1,4 +1,7 @@
 local config = require 'config'
+local util   = require 'utility'
+
+local disables = config.get(nil, 'Lua.diagnostics.disable')
 
 TEST [[
 local <!x!>
@@ -125,7 +128,7 @@ local _ENV = { print = print }
 print(1)
 ]]
 
-config.get(nil, 'Lua.diagnostics.disable')['undefined-env-child'] = true
+util.arrayInsert(disables, 'undefined-env-child')
 TEST [[
 _ENV = nil
 <!GLOBAL!> = 1 --> _ENV.GLOBAL = 1
@@ -151,7 +154,7 @@ GLOBAL = 1
 _ENV = nil
 ]]
 
-config.get(nil, 'Lua.diagnostics.disable')['undefined-env-child'] = nil
+util.arrayRemove(disables, 'undefined-env-child')
 TEST [[
 <!print()
 ('string')!>:sub(1, 1)
@@ -283,6 +286,32 @@ x(1, 2)
 ]]
 
 TEST [[
+---@diagnostic disable: unused-local
+
+---@param a integer
+---@param b integer
+local function f(a, b)
+end
+
+f(...)
+]]
+
+TEST [[
+---@diagnostic disable: unused-local
+
+---@param a integer
+---@param b integer
+local function f(a, b)
+end
+
+local function return2Numbers()
+    return 1, 2
+end
+
+f(return2Numbers())
+]]
+
+TEST [[
 ---@param a integer
 ---@param b? integer
 local function x(a, b)
@@ -329,12 +358,12 @@ return [[
 ]]
 ]=]
 
-config.get(nil, 'Lua.diagnostics.disable')['close-non-object'] = true
+util.arrayInsert(disables, 'close-non-object')
 TEST [[
 local _ <close> = function () end
 ]]
+util.arrayRemove(disables, 'close-non-object')
 
-config.get(nil, 'Lua.diagnostics.disable')['close-non-object'] = nil
 TEST [[
 local _ <close> = <!1!>
 ]]
@@ -347,7 +376,7 @@ TEST [[
 local c <close> = <!(function () return 1 end)()!>
 ]]
 
-config.get(nil, 'Lua.diagnostics.disable')['unused-local'] = true
+util.arrayInsert(disables, 'unused-local')
 TEST [[
 local f = <!function () end!>
 ]]
@@ -375,7 +404,7 @@ local <!function foo ()
 end!>
 ]]
 
-config.get(nil, 'Lua.diagnostics.disable')['unused-local'] = nil
+util.arrayRemove(disables, 'unused-local')
 TEST [[
 local mt, x
 function mt:m()
@@ -1532,6 +1561,14 @@ S = <!x!>()
 ]]
 
 TEST [[
+---@type integer?
+local x
+
+T = {}
+T[<!x!>] = 1
+]]
+
+TEST [[
 local x, y
 local z = x and y
 
@@ -1549,4 +1586,30 @@ function y()
 end
 
 x()
+]]
+
+TEST [[
+---@meta
+
+---@param x fun()
+local function f1(x)
+end
+
+---@return fun()
+local function f2()
+end
+
+f1(f2())
+]]
+
+TEST [[
+---@meta
+
+---@type fun():integer
+local f
+
+---@param x integer
+local function foo(x) end
+
+foo(f())
 ]]

@@ -1,5 +1,85 @@
 # changelog
 
+## 3.3.1
+`2022-6-17`
+* `FIX` [#1213](https://github.com/sumneko/lua-language-server/issues/1213)
+* `FIX` [#1215](https://github.com/sumneko/lua-language-server/issues/1215)
+* `FIX` [#1217](https://github.com/sumneko/lua-language-server/issues/1217)
+* `FIX` [#1218](https://github.com/sumneko/lua-language-server/issues/1218)
+* `FIX` [#1220](https://github.com/sumneko/lua-language-server/issues/1220)
+* `FIX` [#1223](https://github.com/sumneko/lua-language-server/issues/1223)
+
+## 3.3.0
+`2022-6-15`
+* `NEW` `LuaDoc` supports `` `CODE` ``
+  ```lua
+  ---@type `CONST.X` | `CONST.Y`
+  local x
+
+  if x == -- suggest `CONST.X` and `CONST.Y` here
+  ```
+* `CHG` infer type by `error`
+  ```lua
+  ---@type integer|nil
+  local n
+
+  if not n then
+      error('n is nil')
+  end
+
+  print(n) -- `n` is `integer` here
+  ```
+* `CHG` infer type by `t and t.x`
+  ```lua
+  ---@type table|nil
+  local t
+
+  local s = t and t.x or 1 -- `t` in `t.x` is `table`
+  ```
+* `CHG` infer type by `type(x)`
+  ```lua
+  local x
+
+  if type(x) == 'string' then
+      print(x) -- `x` is `string` here
+  end
+
+  local tp = type(x)
+
+  if tp == 'boolean' then
+      print(x) -- `x` is `boolean` here
+  end
+  ```
+* `CHG` infer type by `>`/`<`/`>=`/`<=`
+* `FIX` with clients that support LSP 3.17 (VSCode), workspace diagnostics are triggered every time when opening a file.
+* `FIX` [#1204](https://github.com/sumneko/lua-language-server/issues/1204)
+* `FIX` [#1208](https://github.com/sumneko/lua-language-server/issues/1208)
+
+## 3.2.5
+`2022-6-9`
+* `NEW` provide config docs in `LUA_LANGUAGE_SERVER/doc/`
+* `FIX` [#1148](https://github.com/sumneko/lua-language-server/issues/1148)
+* `FIX` [#1149](https://github.com/sumneko/lua-language-server/issues/1149)
+* `FIX` [#1192](https://github.com/sumneko/lua-language-server/issues/1192)
+
+## 3.2.4
+`2022-5-25`
+* `NEW` settings:
+  + `workspace.supportScheme`: `["file", "untitled", "git"]`
+  + `diagnostics.disableScheme`: `["git"]`
+* `NEW` folding: support folding `---@alias`
+* `CHG` if `rootUri` or `workspaceFolder` is set to `ROOT` or `HOME`, this extension will refuse to load these directories and show an error message.
+* `CHG` show warning message when scanning more than 100,000 files.
+* `CHG` upgrade [LSP](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/) to `3.17`
+* `FIX` hover: can not union `table` with other basic types
+* `FIX` [#1125](https://github.com/sumneko/lua-language-server/issues/1125)
+* `FIX` [#1131](https://github.com/sumneko/lua-language-server/issues/1131)
+* `FIX` [#1134](https://github.com/sumneko/lua-language-server/issues/1134)
+* `FIX` [#1141](https://github.com/sumneko/lua-language-server/issues/1141)
+* `FIX` [#1144](https://github.com/sumneko/lua-language-server/issues/1144)
+* `FIX` [#1150](https://github.com/sumneko/lua-language-server/issues/1150)
+* `FIX` [#1155](https://github.com/sumneko/lua-language-server/issues/1155)
+
 ## 3.2.3
 `2022-5-16`
 * `CHG` parse `.luarc.json` as jsonc. In order to please the editor, it also supports `.luarc.jsonc` as the file name.

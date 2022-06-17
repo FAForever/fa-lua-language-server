@@ -61,7 +61,8 @@ m.DiagnosticDefaultSeverity = {
     ['duplicate-doc-field']     = 'Warning',
     ['unknown-diag-code']       = 'Warning',
 
-    ['codestyle-check']         = "Warning",
+    ['codestyle-check']         = 'Warning',
+    ['spell-check']             = 'Information',
 }
 
 ---@alias DiagnosticDefaultNeededFileStatus
@@ -123,6 +124,7 @@ m.DiagnosticDefaultNeededFileStatus = {
     ['unknown-diag-code']       = 'Any',
 
     ['codestyle-check']         = 'None',
+    ['spell-check']             = 'None',
 }
 
 --- 诊断报告标签
@@ -260,6 +262,7 @@ m.TokenTypes = {
     ["number"]        = 19,
     ["regexp"]        = 20,
     ["operator"]      = 21,
+    ["decorator"]     = 22,
 }
 
 m.BuiltIn = {

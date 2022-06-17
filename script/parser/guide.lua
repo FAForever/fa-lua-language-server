@@ -13,6 +13,8 @@ local type         = type
 ---@field args                  parser.object[]
 ---@field locals                parser.object[]
 ---@field returns               parser.object[]
+---@field exps                  parser.object[]
+---@field keys                  parser.object[]
 ---@field uri                   uri
 ---@field start                 integer
 ---@field finish                integer
@@ -65,6 +67,7 @@ local type         = type
 ---@field hasGoTo?              true
 ---@field hasReturn?            true
 ---@field hasBreak?             true
+---@field hasError?             true
 ---@field _root                 parser.object
 
 ---@class guide
@@ -252,6 +255,7 @@ function m.isLiteral(obj)
         or tp == 'doc.type.string'
         or tp == 'doc.type.integer'
         or tp == 'doc.type.boolean'
+        or tp == 'doc.type.code'
 end
 
 --- 获取字面量
@@ -466,26 +470,46 @@ end
 ---@param pos integer # 可见位置
 ---@return parser.object?
 function m.getLocal(source, name, pos)
-    local root = m.getRoot(source)
-    local res
-    m.eachSourceContain(root, pos, function (src)
-        local locals = src.locals
-        if not locals then
-            return
+    local block = source
+    -- find nearest source
+    for _ = 1, 10000 do
+        if not block then
+            return nil
         end
-        for i = 1, #locals do
-            local loc = locals[i]
-            if loc.effect > pos then
-                break
-            end
-            if loc[1] == name then
-                if not res or res.effect < loc.effect then
-                    res = loc
+        if block.start <= pos and block.finish >= pos then
+            break
+        end
+        block = block.parent
+    end
+
+    m.eachSourceContain(block, pos, function (src)
+        if  blockTypes[src.type]
+        and (src.finish - src.start) < (block.finish - src.start) then
+            block = src
+        end
+    end)
+
+    for _ = 1, 10000 do
+        if not block then
+            break
+        end
+        local res
+        if block.locals then
+            for _, loc in ipairs(block.locals) do
+                if  loc[1] == name
+                and loc.effect <= pos then
+                    if not res or res.effect < loc.effect then
+                        res = loc
+                    end
                 end
             end
         end
-    end)
-    return res
+        if res then
+            return res
+        end
+        block = block.parent
+    end
+    return nil
 end
 
 --- 获取指定区块中所有的可见局部变量名称

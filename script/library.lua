@@ -498,6 +498,9 @@ local function check3rd(uri)
     if hasAsked then
         return
     end
+    if not ws.isReady(uri) then
+        return
+    end
     if not config.get(uri, 'Lua.workspace.checkThirdParty') then
         return
     end

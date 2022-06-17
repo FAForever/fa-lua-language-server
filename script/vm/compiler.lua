@@ -59,9 +59,9 @@ local searchFieldSwitch = util.switch()
     : call(function (suri, node, key, ref, pushResult)
         local fields
         if key then
-            fields = vm.getLocalSources(node, key)
+            fields = vm.getLocalSourcesSets(node, key)
         else
-            fields = vm.getLocalFields(node)
+            fields = vm.getLocalFields(node, false)
         end
         if fields then
             for _, src in ipairs(fields) do
@@ -525,20 +525,54 @@ local function bindAs(source)
     if not docs then
         return
     end
-    for _, doc in ipairs(docs) do
-        if doc.type == 'doc.as' and doc.originalComment.start == source.finish + 2 then
-            if doc.as then
-                vm.setNode(source, vm.compileNode(doc.as), true)
+    local ases = docs._asCache
+    if not ases then
+        ases = {}
+        docs._asCache = ases
+        for _, doc in ipairs(docs) do
+            if doc.type == 'doc.as' and doc.as then
+                ases[#ases+1] = doc
             end
-            return true
+        end
+        table.sort(ases, function (a, b)
+            return a.start < b.start
+        end)
+    end
+
+    local max = #ases
+    local index
+    local left  = 1
+    local right = max
+    for _ = 1, 1000 do
+        index = left + (right - left) // 2
+        if index <= left then
+            index = left
+            break
+        elseif index >= right then
+            index = right
+            break
+        end
+        local doc = ases[index]
+        if doc.originalComment.start < source.finish + 2 then
+            left = index + 1
+        else
+            right = index
         end
     end
+
+    local doc = ases[index]
+    if doc and doc.originalComment.start == source.finish + 2 then
+        vm.setNode(source, vm.compileNode(doc.as), true)
+        return true
+    end
+
     return false
 end
 
+-- 该函数有副作用，会给source绑定node！
 local function bindDocs(source)
     local isParam = source.parent.type == 'funcargs'
-                 or source.parent.type == 'in'
+                 or (source.parent.type == 'in' and source.finish <= source.parent.keys.finish)
     local docs = source.bindDocs
     for i = #docs, 1, -1 do
         local doc = docs[i]
@@ -571,12 +605,12 @@ local function bindDocs(source)
             local name = doc.module
             local uri = rpath.findUrisByRequirePath(guide.getUri(source), name)[1]
             if not uri then
-                return nil
+                return true
             end
             local state = files.getState(uri)
             local ast   = state and state.ast
             if not ast then
-                return nil
+                return true
             end
             vm.setNode(source, vm.compileNode(ast))
             return true
@@ -591,7 +625,7 @@ local function bindDocs(source)
 end
 
 local function compileByLocalID(source)
-    local sources = vm.getLocalSources(source)
+    local sources = vm.getLocalSourcesSets(source)
     if not sources then
         return
     end
@@ -818,6 +852,44 @@ function vm.compileCallArg(arg, call, index)
     return vm.getNode(arg)
 end
 
+---@class parser.object
+---@field _iterator? table
+---@field _iterArgs? table
+---@field _iterVars? table<parser.object, vm.node>
+
+---@param source parser.object
+local function compileForVars(source)
+    if source._iterator then
+        return
+    end
+        --  for k, v in pairs(t) do
+        --> for k, v in iterator, status, initValue do
+        --> local k, v = iterator(status, initValue)
+    source._iterator = {
+        type = 'dummyfunc',
+        parent = source,
+    }
+    source._iterArgs = {{},{}}
+    source._iterVars = {}
+    -- iterator
+    selectNode(source._iterator,    source.exps, 1)
+    -- status
+    selectNode(source._iterArgs[1], source.exps, 2)
+    -- initValue
+    selectNode(source._iterArgs[2], source.exps, 3)
+    if source.keys then
+        for i, loc in ipairs(source.keys) do
+            local node = getReturn(source._iterator, i, source._iterArgs)
+            if node then
+                if i == 1 then
+                    node:removeOptional()
+                end
+                source._iterVars[loc] = node
+            end
+        end
+    end
+end
+
 ---@param source parser.object
 ---@return vm.node
 local function compileLocal(source)
@@ -889,16 +961,192 @@ local function compileLocal(source)
     end
     -- for x in ... do
     if source.parent.type == 'in' then
-        vm.compileNode(source.parent)
+        compileForVars(source.parent)
+        local keyNode = source.parent._iterVars[source]
+        if keyNode then
+            vm.setNode(source, keyNode)
+        end
     end
 
     -- for x = ... do
     if source.parent.type == 'loop' then
-        vm.compileNode(source.parent)
+        if source.parent.loc == source then
+            vm.setNode(source, vm.declareGlobal('type', 'integer'))
+        end
     end
 
     vm.getNode(source):setData('hasDefined', hasMarkDoc or hasMarkParam or hasMarkValue)
 end
+
+local binarySwich = util.switch()
+    : case 'and'
+    : call(function (source)
+        local node1 = vm.compileNode(source[1])
+        local node2 = vm.compileNode(source[2])
+        local r1 = vm.test(source[1])
+        if r1 == true then
+            vm.setNode(source, node2)
+        elseif r1 == false then
+            vm.setNode(source, node1)
+        else
+            vm.setNode(source, node2)
+        end
+    end)
+    : case 'or'
+    : call(function (source)
+        local node1 = vm.compileNode(source[1])
+        local node2 = vm.compileNode(source[2])
+        local r1 = vm.test(source[1])
+        if r1 == true then
+            vm.setNode(source, node1)
+        elseif r1 == false then
+            vm.setNode(source, node2)
+        else
+            vm.getNode(source):merge(node1)
+            vm.getNode(source):setTruthy()
+            vm.getNode(source):merge(node2)
+        end
+    end)
+    : case '=='
+    : case '~='
+    : call(function (source)
+        local result = vm.equal(source[1], source[2])
+        if result == nil then
+            vm.setNode(source, vm.declareGlobal('type', 'boolean'))
+        else
+            if source.op.type == '~=' then
+                result = not result
+            end
+            vm.setNode(source, {
+                type   = 'boolean',
+                start  = source.start,
+                finish = source.finish,
+                parent = source,
+                [1]    = result,
+            })
+        end
+    end)
+    : case '<<'
+    : case '>>'
+    : case '&'
+    : case '|'
+    : case '~'
+    : call(function (source)
+        local a = vm.getInteger(source[1])
+        local b = vm.getInteger(source[2])
+        if a and b then
+            local op = source.op.type
+            local result = op.type == '<<' and a << b
+                        or op.type == '>>' and a >> b
+                        or op.type == '&'  and a &  b
+                        or op.type == '|'  and a |  b
+                        or op.type == '~'  and a ~  b
+            vm.setNode(source, {
+                type   = 'integer',
+                start  = source.start,
+                finish = source.finish,
+                parent = source,
+                [1]    =result,
+            })
+        else
+            vm.setNode(source, vm.declareGlobal('type', 'integer'))
+        end
+    end)
+    : case '+'
+    : case '-'
+    : case '*'
+    : case '/'
+    : case '%'
+    : case '//'
+    : case '^'
+    : call(function (source)
+        local a = vm.getNumber(source[1])
+        local b = vm.getNumber(source[2])
+        local op = source.op.type
+        local zero = b == 0
+                and (  op == '%'
+                    or op == '/'
+                    or op == '//'
+                )
+        if a and b and not zero then
+            local result = op == '+'  and a +  b
+                        or op == '-'  and a -  b
+                        or op == '*'  and a *  b
+                        or op == '/'  and a /  b
+                        or op == '%'  and a %  b
+                        or op == '//' and a // b
+                        or op == '^'  and a ^  b
+            vm.setNode(source, {
+                type   = math.type(result) == 'integer' and 'integer' or 'number',
+                start  = source.start,
+                finish = source.finish,
+                parent = source,
+                [1]    =result,
+            })
+        else
+            vm.setNode(source, vm.declareGlobal('type', 'number'))
+        end
+    end)
+    : case '..'
+    : call(function (source)
+        local a =  vm.getString(source[1])
+                or vm.getNumber(source[1])
+        local b =  vm.getString(source[2])
+                or vm.getNumber(source[2])
+        if a and b then
+            if type(a) == 'number' or type(b) == 'number' then
+                local uri     = guide.getUri(source)
+                local version = config.get(uri, 'Lua.runtime.version')
+                if math.tointeger(a) and math.type(a) == 'float' then
+                    if version == 'Lua 5.3' or version == 'Lua 5.4' then
+                        a = ('%.1f'):format(a)
+                    else
+                        a = ('%.0f'):format(a)
+                    end
+                end
+                if math.tointeger(b) and math.type(b) == 'float' then
+                    if version == 'Lua 5.3' or version == 'Lua 5.4' then
+                        b = ('%.1f'):format(b)
+                    else
+                        b = ('%.0f'):format(b)
+                    end
+                end
+            end
+            vm.setNode(source, {
+                type   = 'string',
+                start  = source.start,
+                finish = source.finish,
+                parent = source,
+                [1]    = a .. b,
+            })
+        else
+            vm.setNode(source, vm.declareGlobal('type', 'string'))
+        end
+    end)
+    : case '>'
+    : case '<'
+    : case '>='
+    : case '<='
+    : call(function (source)
+        local a = vm.getNumber(source[1])
+        local b = vm.getNumber(source[2])
+        if a and b then
+            local op = source.op.type
+            local result = op.type == '>'  and a >  b
+                        or op.type == '<'  and a <  b
+                        or op.type == '>=' and a >= b
+                        or op.type == '<=' and a <= b
+            vm.setNode(source, {
+                type   = 'boolean',
+                start  = source.start,
+                finish = source.finish,
+                parent = source,
+                [1]    =result,
+            })
+        else
+            vm.setNode(source, vm.declareGlobal('type', 'boolean'))
+        end
+    end)
 
 local compilerSwitch = util.switch()
     : case 'nil'
@@ -970,8 +1218,7 @@ local compilerSwitch = util.switch()
 
         local hasMark = vm.getNode(source):getData 'hasDefined'
 
-        local runner = vm.createRunner(source)
-        runner:launch(function (src, node)
+        vm.launchRunner(source, function (src, node)
             if src.type == 'setlocal' then
                 if src.bindDocs then
                     for _, doc in ipairs(src.bindDocs) do
@@ -1214,42 +1461,6 @@ local compilerSwitch = util.switch()
         end
         vm.setNode(source, node)
     end)
-    : case 'in'
-    : call(function (source)
-        if not source._iterator then
-            --  for k, v in pairs(t) do
-            --> for k, v in iterator, status, initValue do
-            --> local k, v = iterator(status, initValue)
-            source._iterator = {
-                type = 'dummyfunc',
-                parent = source,
-            }
-            source._iterArgs = {{},{}}
-        end
-        -- iterator
-        selectNode(source._iterator,    source.exps, 1)
-        -- status
-        selectNode(source._iterArgs[1], source.exps, 2)
-        -- initValue
-        selectNode(source._iterArgs[2], source.exps, 3)
-        if source.keys then
-            for i, loc in ipairs(source.keys) do
-                local node = getReturn(source._iterator, i, source._iterArgs)
-                if node then
-                    if i == 1 then
-                        node:removeOptional()
-                    end
-                    vm.setNode(loc, node)
-                end
-            end
-        end
-    end)
-    : case 'loop'
-    : call(function (source)
-        if source.loc then
-            vm.setNode(source.loc, vm.declareGlobal('type', 'integer'))
-        end
-    end)
     : case 'doc.type'
     : call(function (source)
         for _, typeUnit in ipairs(source.types) do
@@ -1262,6 +1473,7 @@ local compilerSwitch = util.switch()
     : case 'doc.type.integer'
     : case 'doc.type.string'
     : case 'doc.type.boolean'
+    : case 'doc.type.code'
     : call(function (source)
         vm.setNode(source, source)
     end)
@@ -1454,310 +1666,7 @@ local compilerSwitch = util.switch()
         if not source[1] or not source[2] then
             return
         end
-        if source.op.type == 'and' then
-            local node1 = vm.compileNode(source[1])
-            local node2 = vm.compileNode(source[2])
-            local r1 = vm.test(source[1])
-            if r1 == true then
-                vm.setNode(source, node2)
-            elseif r1 == false then
-                vm.setNode(source, node1)
-            else
-                vm.setNode(source, node2)
-            end
-        end
-        if source.op.type == 'or' then
-            local node1 = vm.compileNode(source[1])
-            local node2 = vm.compileNode(source[2])
-            local r1 = vm.test(source[1])
-            if r1 == true then
-                vm.setNode(source, node1)
-            elseif r1 == false then
-                vm.setNode(source, node2)
-            else
-                vm.getNode(source):merge(node1)
-                vm.getNode(source):setTruthy()
-                vm.getNode(source):merge(node2)
-            end
-        end
-        if source.op.type == '==' then
-            local result = vm.equal(source[1], source[2])
-            if result == nil then
-                vm.setNode(source, vm.declareGlobal('type', 'boolean'))
-                return
-            else
-                vm.setNode(source, {
-                    type   = 'boolean',
-                    start  = source.start,
-                    finish = source.finish,
-                    parent = source,
-                    [1]    = result,
-                })
-                return
-            end
-        end
-        if source.op.type == '~=' then
-            local result = vm.equal(source[1], source[2])
-            if result == nil then
-                vm.setNode(source, vm.declareGlobal('type', 'boolean'))
-                return
-            else
-                vm.setNode(source, {
-                    type   = 'boolean',
-                    start  = source.start,
-                    finish = source.finish,
-                    parent = source,
-                    [1]    = not result,
-                })
-                return
-            end
-        end
-        if source.op.type == '<<' then
-            local a = vm.getInteger(source[1])
-            local b = vm.getInteger(source[2])
-            if a and b then
-                vm.setNode(source, {
-                    type   = 'integer',
-                    start  = source.start,
-                    finish = source.finish,
-                    parent = source,
-                    [1]    = a << b,
-                })
-                return
-            else
-                vm.setNode(source, vm.declareGlobal('type', 'integer'))
-                return
-            end
-        end
-        if source.op.type == '>>' then
-            local a = vm.getInteger(source[1])
-            local b = vm.getInteger(source[2])
-            if a and b then
-                vm.setNode(source, {
-                    type   = 'integer',
-                    start  = source.start,
-                    finish = source.finish,
-                    parent = source,
-                    [1]    = a >> b,
-                })
-                return
-            else
-                vm.setNode(source, vm.declareGlobal('type', 'integer'))
-                return
-            end
-        end
-        if source.op.type == '&' then
-            local a = vm.getInteger(source[1])
-            local b = vm.getInteger(source[2])
-            if a and b then
-                vm.setNode(source, {
-                    type   = 'integer',
-                    start  = source.start,
-                    finish = source.finish,
-                    parent = source,
-                    [1]    = a & b,
-                })
-                return
-            else
-                vm.setNode(source, vm.declareGlobal('type', 'integer'))
-                return
-            end
-        end
-        if source.op.type == '|' then
-            local a = vm.getInteger(source[1])
-            local b = vm.getInteger(source[2])
-            if a and b then
-                vm.setNode(source, {
-                    type   = 'integer',
-                    start  = source.start,
-                    finish = source.finish,
-                    parent = source,
-                    [1]    = a | b,
-                })
-                return
-            else
-                vm.setNode(source, vm.declareGlobal('type', 'integer'))
-                return
-            end
-        end
-        if source.op.type == '~' then
-            local a = vm.getInteger(source[1])
-            local b = vm.getInteger(source[2])
-            if a and b then
-                vm.setNode(source, {
-                    type   = 'integer',
-                    start  = source.start,
-                    finish = source.finish,
-                    parent = source,
-                    [1]    = a ~ b,
-                })
-                return
-            else
-                vm.setNode(source, vm.declareGlobal('type', 'integer'))
-                return
-            end
-        end
-        if source.op.type == '+' then
-            local a = vm.getNumber(source[1])
-            local b = vm.getNumber(source[2])
-            if a and b then
-                local result = a + b
-                vm.setNode(source, {
-                    type   = math.type(result) == 'integer' and 'integer' or 'number',
-                    start  = source.start,
-                    finish = source.finish,
-                    parent = source,
-                    [1]    = result,
-                })
-                return
-            else
-                vm.setNode(source, vm.declareGlobal('type', 'number'))
-                return
-            end
-        end
-        if source.op.type == '-' then
-            local a = vm.getNumber(source[1])
-            local b = vm.getNumber(source[2])
-            if a and b then
-                local result = a - b
-                vm.setNode(source, {
-                    type   = math.type(result) == 'integer' and 'integer' or 'number',
-                    start  = source.start,
-                    finish = source.finish,
-                    parent = source,
-                    [1]    = result,
-                })
-                return
-            else
-                vm.setNode(source, vm.declareGlobal('type', 'number'))
-                return
-            end
-        end
-        if source.op.type == '*' then
-            local a = vm.getNumber(source[1])
-            local b = vm.getNumber(source[2])
-            if a and b then
-                local result = a * b
-                vm.setNode(source, {
-                    type   = math.type(result) == 'integer' and 'integer' or 'number',
-                    start  = source.start,
-                    finish = source.finish,
-                    parent = source,
-                    [1]    = result,
-                })
-                return
-            else
-                vm.setNode(source, vm.declareGlobal('type', 'number'))
-                return
-            end
-        end
-        if source.op.type == '/' then
-            local a = vm.getNumber(source[1])
-            local b = vm.getNumber(source[2])
-            if a and b then
-                vm.setNode(source, {
-                    type   = 'number',
-                    start  = source.start,
-                    finish = source.finish,
-                    parent = source,
-                    [1]    = a / b,
-                })
-                return
-            else
-                vm.setNode(source, vm.declareGlobal('type', 'number'))
-                return
-            end
-        end
-        if source.op.type == '%' then
-            local a = vm.getNumber(source[1])
-            local b = vm.getNumber(source[2])
-            if a and b and b ~= 0 then
-                local result = a % b
-                vm.setNode(source, {
-                    type   = math.type(result) == 'integer' and 'integer' or 'number',
-                    start  = source.start,
-                    finish = source.finish,
-                    parent = source,
-                    [1]    = result,
-                })
-                return
-            else
-                vm.setNode(source, vm.declareGlobal('type', 'number'))
-                return
-            end
-        end
-        if source.op.type == '^' then
-            local a = vm.getNumber(source[1])
-            local b = vm.getNumber(source[2])
-            if a and b then
-                vm.setNode(source, {
-                    type   = 'number',
-                    start  = source.start,
-                    finish = source.finish,
-                    parent = source,
-                    [1]    = a ^ b,
-                })
-                return
-            else
-                vm.setNode(source, vm.declareGlobal('type', 'number'))
-                return
-            end
-        end
-        if source.op.type == '//' then
-            local a = vm.getNumber(source[1])
-            local b = vm.getNumber(source[2])
-            if a and b and b ~= 0 then
-                local result = a // b
-                vm.setNode(source, {
-                    type   = math.type(result) == 'integer' and 'integer' or 'number',
-                    start  = source.start,
-                    finish = source.finish,
-                    parent = source,
-                    [1]    = result,
-                })
-                return
-            else
-                vm.setNode(source, vm.declareGlobal('type', 'number'))
-                return
-            end
-        end
-        if source.op.type == '..' then
-            local a = vm.getString(source[1])
-                   or vm.getNumber(source[1])
-            local b = vm.getString(source[2])
-                   or vm.getNumber(source[2])
-            if a and b then
-                if type(a) == 'number' or type(b) == 'number' then
-                    local uri     = guide.getUri(source)
-                    local version = config.get(uri, 'Lua.runtime.version')
-                    if math.tointeger(a) and math.type(a) == 'float' then
-                        if version == 'Lua 5.3' or version == 'Lua 5.4' then
-                            a = ('%.1f'):format(a)
-                        else
-                            a = ('%.0f'):format(a)
-                        end
-                    end
-                    if math.tointeger(b) and math.type(b) == 'float' then
-                        if version == 'Lua 5.3' or version == 'Lua 5.4' then
-                            b = ('%.1f'):format(b)
-                        else
-                            b = ('%.0f'):format(b)
-                        end
-                    end
-                end
-                vm.setNode(source, {
-                    type   = 'string',
-                    start  = source.start,
-                    finish = source.finish,
-                    parent = source,
-                    [1]    = a .. b,
-                })
-                return
-            else
-                vm.setNode(source, vm.declareGlobal('type', 'string'))
-                return
-            end
-        end
+        binarySwich(source.op.type, source)
     end)
 
 ---@param source vm.object
@@ -1821,6 +1730,7 @@ local function compileByGlobal(source)
                     end
                 end
             end
+            vm.setNode(set, globalNode)
         end
     end
     if global.cate == 'type' then

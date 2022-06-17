@@ -40,7 +40,15 @@ function mt:splitLine()
     return self
 end
 
-function mt:string()
+function mt:emptyLine()
+    self._cacheResult = nil
+    self[#self+1] = {
+        type = 'emptyline',
+    }
+    return self
+end
+
+function mt:string(nl)
     if self._cacheResult then
         return self._cacheResult
     end
@@ -58,6 +66,11 @@ function mt:string()
                 and lines[#lines] ~= '---' then
                     lines[#lines+1] = ''
                     lines[#lines+1] = '---'
+                end
+            elseif obj.type == 'emptyline' then
+                if  #lines > 0
+                and lines[#lines] ~= '' then
+                    lines[#lines+1] = ''
                 end
             elseif obj.type == 'markdown' then
                 concat(obj.markdown)
@@ -101,7 +114,7 @@ function mt:string()
         end
     end
 
-    local result = table.concat(lines, '\n')
+    local result = table.concat(lines, nl or '\n')
     self._cacheResult = result
     return result
 end

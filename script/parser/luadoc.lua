@@ -1,7 +1,7 @@
 local m          = require 'lpeglabel'
 local re         = require 'parser.relabel'
 local guide      = require 'parser.guide'
-local parser     = require 'parser.newparser'
+local compile    = require 'parser.compile'
 local util       = require 'utility'
 
 local TokenTypes, TokenStarts, TokenFinishs, TokenContents, TokenMarks
@@ -12,11 +12,13 @@ local Parser = re.compile([[
 Main                <-  (Token / Sp)*
 Sp                  <-  %s+
 X16                 <-  [a-fA-F0-9]
-Token               <-  Integer / Name / String / Symbol
+Token               <-  Integer / Name / String / Code / Symbol
 Name                <-  ({} {%name} {})
                     ->  Name
 Integer             <-  ({} {[0-9]+} !'.' {})
                     ->  Integer
+Code                <-  ({} '`' { (!'`' .)*} '`' {})
+                    ->  Code
 String              <-  ({} StringDef {})
                     ->  String
 StringDef           <-  {'"'}
@@ -48,7 +50,7 @@ EChar               <-  'a' -> ea
                     /   ([0-9] [0-9]? [0-9]?) -> Char10
                     /   ('u{' {X16*} '}')    -> CharUtf8
 Symbol              <-  ({} {
-                            [:|,<>()?+#`{}]
+                            [:|,<>()?+#{}]
                         /   '[]'
                         /   '...'
                         /   '['
@@ -113,6 +115,13 @@ Symbol              <-  ({} {
         TokenStarts[Ci]   = start
         TokenFinishs[Ci]  = finish - 1
         TokenContents[Ci] = math.tointeger(content)
+    end,
+    Code = function (start, content, finish)
+        Ci = Ci + 1
+        TokenTypes[Ci]    = 'code'
+        TokenStarts[Ci]   = start
+        TokenFinishs[Ci]  = finish - 1
+        TokenContents[Ci] = content
     end,
     Symbol = function (start, content, finish)
         Ci = Ci + 1
@@ -534,6 +543,22 @@ local function parseString(parent)
     return str
 end
 
+local function parseCode(parent)
+    local tp, content = peekToken()
+    if not tp or tp ~= 'code' then
+        return nil
+    end
+    nextToken()
+    local code = {
+        type   = 'doc.type.code',
+        start  = getStart(),
+        finish = getFinish(),
+        parent = parent,
+        [1]    = content,
+    }
+    return code
+end
+
 local function parseInteger(parent)
     local tp, content = peekToken()
     if not tp or tp ~= 'integer' then
@@ -584,22 +609,15 @@ function parseTypeUnit(parent)
     local result = parseFunction(parent)
                 or parseTable(parent)
                 or parseString(parent)
+                or parseCode(parent)
                 or parseInteger(parent)
                 or parseBoolean(parent)
                 or parseDots('doc.type.name', parent)
                 or parseParen(parent)
     if not result then
-        local literal = checkToken('symbol', '`', 1)
-        if literal then
-            nextToken()
-        end
         result = parseName('doc.type.name', parent)
         if not result then
             return nil
-        end
-        if literal then
-            result.literal = true
-            nextSymbolOrError '`'
         end
     end
     while true do
@@ -1318,7 +1336,7 @@ local function trimTailComment(text)
         comment = text:sub(3)
     end
     if comment:find '^%s*[\'"[]' then
-        local state = parser(comment:gsub('^%s+', ''), 'String')
+        local state = compile(comment:gsub('^%s+', ''), 'String')
         if state and state.ast then
             comment = state.ast[1]
         end
@@ -1432,6 +1450,13 @@ local function bindGeneric(binded)
                 local name = src[1]
                 if generics[name] then
                     src.type = 'doc.generic.name'
+                end
+            end)
+            guide.eachSourceType(doc, 'doc.type.code', function (src)
+                local name = src[1]
+                if generics[name] then
+                    src.type = 'doc.generic.name'
+                    src.literal = true
                 end
             end)
         end

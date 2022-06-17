@@ -1921,3 +1921,21 @@ end
 [[
 (upvalue) x: unknown
 ]]
+
+TEST [[
+---@type `123 ????` | ` x | y `
+local <?x?>
+]]
+[[
+local x: ` x | y `|`123 ????`
+]]
+
+TEST [[
+---@type any
+local x
+
+print(x.<?y?>)
+]]
+[[
+(field) x.y: unknown
+]]

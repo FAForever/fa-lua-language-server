@@ -56,14 +56,22 @@ config.diagnostics.workspaceRate  = -- TODO: need translate!
 "Workspace diagnostics run rate (%). Decreasing this value reduces CPU usage, but also reduces the speed of workspace diagnostics. The diagnosis of the file you are currently editing is always done at full speed and is not affected by this setting."
 config.diagnostics.libraryFiles   = -- TODO: need translate!
 "How to diagnose files loaded via `Lua.workspace.library`."
+config.diagnostics.libraryFiles.Enable   = -- TODO: need translate!
+"Always diagnose these files."
+config.diagnostics.libraryFiles.Opened   = -- TODO: need translate!
+"Only when these files are opened will it be diagnosed."
+config.diagnostics.libraryFiles.Disable  = -- TODO: need translate!
+"These files are not diagnosed."
 config.diagnostics.ignoredFiles   = -- TODO: need translate!
 "How to diagnose ignored files."
-config.diagnostics.files.Enable   = -- TODO: need translate!
+config.diagnostics.ignoredFiles.Enable   = -- TODO: need translate!
 "Always diagnose these files."
-config.diagnostics.files.Opened   = -- TODO: need translate!
+config.diagnostics.ignoredFiles.Opened   = -- TODO: need translate!
 "Only when these files are opened will it be diagnosed."
-config.diagnostics.files.Disable  = -- TODO: need translate!
+config.diagnostics.ignoredFiles.Disable  = -- TODO: need translate!
 "These files are not diagnosed."
+config.diagnostics.disableScheme  = -- TODO: need translate!
+'Do not diagnose Lua files that use the following scheme.'
 config.workspace.ignoreDir        = -- TODO: need translate!
 "Ignored files and directories (Use `.gitignore` grammar)."-- .. example.ignoreDir,
 config.workspace.ignoreSubmodules = -- TODO: need translate!
@@ -89,6 +97,8 @@ Automatic detection and adaptation of third-party libraries, currently supported
 ]]
 config.workspace.userThirdParty          = -- TODO: need translate!
 'Add private third-party library configuration file paths here, please refer to the built-in [configuration file path](https://github.com/sumneko/lua-language-server/tree/master/meta/3rd)'
+config.workspace.supportScheme           = -- TODO: need translate!
+'Provide language server for the Lua files of the following scheme.'
 config.completion.enable                 = -- TODO: need translate!
 'Enable completion.'
 config.completion.callSnippet            = -- TODO: need translate!
@@ -159,6 +169,10 @@ config.hover.previewFields               = -- TODO: need translate!
 "When hovering to view a table, limits the maximum number of previews for fields."
 config.hover.enumsLimit                  = -- TODO: need translate!
 "When the value corresponds to multiple types, limit the number of types displaying."
+config.hover.expandAlias                 = -- TODO: need translate!
+[[
+Whether to expand the alias. For example, expands `---@alias myType boolean|number` appears as `boolean|number`, otherwise it appears as `myType'.
+]]
 config.develop.enable                    = -- TODO: need translate!
 'Developer mode. Do not enable, performance will be affected.'
 config.develop.debuggerPort              = -- TODO: need translate!
@@ -195,6 +209,8 @@ config.hint.arrayIndex.Auto              = -- TODO: need translate!
 'Show hints only when the table is greater than 3 items, or the table is a mixed table.'
 config.hint.arrayIndex.Disable           = -- TODO: need translate!
 'Disable hints of array index.'
+config.hint.await                        = -- TODO: need translate!
+'If the called function is marked `---@async`, prompt `await` at the call.'
 config.format.enable                     = -- TODO: need translate!
 'Enable code formatter.'
 config.telemetry.enable                  = -- TODO: need translate!

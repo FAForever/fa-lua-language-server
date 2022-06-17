@@ -3,10 +3,79 @@ local guide  = require 'parser.guide'
 local vm     = require 'vm'
 local lang   = require 'language'
 
+---@param source parser.object
+---@return integer
+local function countReturnsOfFunction(source)
+    local n = 0
+
+    local docs = source.bindDocs
+    if docs then
+        for _, doc in ipairs(docs) do
+            if doc.type == 'doc.return' then
+                for _, rtn in ipairs(doc.returns) do
+                    if rtn.returnIndex and rtn.returnIndex > n then
+                        n = rtn.returnIndex
+                    end
+                end
+            end
+        end
+    end
+
+    local returns = source.returns
+    if returns then
+        for _, rtn in ipairs(returns) do
+            if #rtn > n then
+                n = #rtn
+            end
+        end
+    end
+
+    return n
+end
+
+---@param source parser.object
+---@return integer
+local function countReturnsOfDocFunction(source)
+    return #source.returns
+end
+
+local function countMaxReturns(source)
+    local hasFounded
+    local n = 0
+    for _, def in ipairs(vm.getDefs(source)) do
+        if def.type == 'function' then
+            hasFounded = true
+            local rets = countReturnsOfFunction(def)
+            if rets > n then
+                n = rets
+            end
+        elseif def.type == 'doc.type.function' then
+            hasFounded = true
+            local rets = countReturnsOfDocFunction(def)
+            if rets > n then
+                n = rets
+            end
+        end
+    end
+
+    if hasFounded then
+        return n
+    else
+        return math.huge
+    end
+end
+
 local function countCallArgs(source)
     local result = 0
     if not source.args then
         return 0
+    end
+    local lastArg = source.args[#source.args]
+    if lastArg.type == 'varargs' then
+        return math.huge
+    end
+    if lastArg.type == 'call' then
+        result = result + countMaxReturns(lastArg.node) - 1
     end
     result = result + #source.args
     return result

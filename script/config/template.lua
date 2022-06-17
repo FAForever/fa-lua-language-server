@@ -229,6 +229,7 @@ local template = {
                                                 }
                                             )
                                             >> util.deepCopy(define.BuiltIn),
+    ['Lua.runtime.exportEnvDefault']       = Type.Boolean >> false,
     ['Lua.diagnostics.enable']              = Type.Boolean >> true,
     ['Lua.diagnostics.globals']             = Type.Array(Type.String),
     ['Lua.diagnostics.disable']             = Type.Array(Type.String),
@@ -325,7 +326,6 @@ local template = {
     ['Lua.format.defaultConfig']            = Type.Hash(Type.String, Type.String)
                                             >> {},
     ['Lua.spell.dict']                      = Type.Array(Type.String),
-    ['Lua.telemetry.enable']                = Type.Or(Type.Boolean >> false, Type.Nil) >> nil,
     ['Lua.misc.parameters']                 = Type.Array(Type.String),
 
     -- VSCode

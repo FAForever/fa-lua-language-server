@@ -119,6 +119,10 @@ return function (uri, position)
             goto CONTINUE
         end
 
+        if src.start == -1 and src.finish == -1 then
+            goto CONTINUE
+        end
+
         results[#results+1] = {
             target = src,
             uri    = root.uri,

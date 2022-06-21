@@ -41,6 +41,7 @@ local function PostProcessUnit(unit)
     local isAir = unit.CategoriesHash['AIR']
     local isBomber = unit.CategoriesHash['BOMBER']
     local isGunship = unit.CategoriesHash['GUNSHIP']
+    local isTransport = unit.CategoriesHash['TRANSPORTATION']
 
     local isTech1 = unit.CategoriesHash['TECH1']
     local isTech2 = unit.CategoriesHash['TECH2']
@@ -118,7 +119,7 @@ local function PostProcessUnit(unit)
     -- value used by formations to determine the distance between other air units. Note
     -- that the value must be of type unsigned integer!
 
-    if isAir and not (isExperimental or isStructure) then 
+    if isAir and not (isExperimental or isStructure or (isTransport and not isGunship)) then 
         unit.Footprint = unit.Footprint or { }
         if isBomber then 
             unit.Footprint.SizeX = 4
@@ -130,6 +131,10 @@ local function PostProcessUnit(unit)
             unit.Footprint.SizeX = 2
             unit.Footprint.SizeZ = 2
         end
+    end
+
+    if unit.CategoriesHash['FACTORY'] and unit.CategoriesHash['NAVAL'] then 
+        unit.Physics.CorrectNavalRollOffPoints = true
     end
 end
 

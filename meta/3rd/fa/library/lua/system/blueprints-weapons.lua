@@ -28,7 +28,6 @@ local function ProcessWeapon(unit, weapon)
     if weapon.DamageType == "DeathExplosion" or weapon.Label == "DeathWeapon" or weapon.Label == "DeathImpact" then 
         weapon.TargetCheckInterval = weaponTargetCheckUpperLimit
         weapon.AlwaysRecheckTarget = false 
-        weapon.ManualFire = true 
         weapon.TrackingRadius = 0.0
         return 
     end
@@ -139,7 +138,7 @@ end
 function ProcessWeapons(units)
     for k, unit in units do 
         if unit.Weapon then 
-            LOG("Processing: " .. unit.BlueprintId .. " (" .. tostring(unit.General.UnitName) .. ")")
+            -- LOG("Processing: " .. unit.BlueprintId .. " (" .. tostring(unit.General.UnitName) .. ")")
             for k, weapon in unit.Weapon do 
                 if not weapon.DummyWeapon then 
                     ProcessWeapon(unit, weapon)

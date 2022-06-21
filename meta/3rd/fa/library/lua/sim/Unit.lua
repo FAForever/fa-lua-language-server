@@ -117,6 +117,7 @@ end
 local cUnit = moho.unit_methods
 ---@class Unit : moho.unit_methods, moho.entity_methods
 ---@field Brain AIBrain
+---@field Buffs {Affects: BlueprintBuff.Affects, buffTable: table<string, table>}
 ---@field Army Army
 ---@field UnitId UnitId
 ---@field EntityId EntityId
@@ -4266,6 +4267,15 @@ Unit = Class(moho.unit_methods) {
             cUnit.SetConsumptionActive(self, flag)
             self.EngineFlags['SetConsumptionActive'] = flag 
         end
+    end,
+
+    --- Determines the upgrade animation to use. Allows you to manage units (by hooking) that can upgrade to
+    --- more than just one unit type, as an example tech 1 factories that can become HQs or
+    --- support factories.
+    ---@param self Unit A reference to the unit itself, automatically set when you use the ':' notation
+    ---@param unitBeingBuilt Unit A flag to determine whether our consumption should be active
+    GetUpgradeAnimation = function(self, unitBeingBuilt) 
+        return self.Blueprint.Display.AnimationUpgrade
     end,
 
     --- Various callback-like functions

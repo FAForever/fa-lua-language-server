@@ -7,11 +7,13 @@
   * `param-type-mismatch`
   * `unknown-cast-variable`
   * `cast-type-mismatch`
+  * `missing-return-value`
 * `NEW` settings:
   * `diagnostics.groupSeverity`
   * `diagnostics.groupFileStatus`
   * `type.castNumberToInteger`
   * `type.weakUnionCheck`
+  * `hint.semicolon`
 * `CHG` infer `nil` as redundant return value
   ```lua
   local function f() end

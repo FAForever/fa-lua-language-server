@@ -811,7 +811,7 @@ local function isValidCallArgNode(source, node)
         return node.type == 'doc.type.function'
     end
     if source.type == 'table' then
-        return node.type == 'doc.type.table'
+        return node.type == 'doc.type.table' or node.type == 'doc.type.array'
             or (    node.type == 'global'
                 and node.cate == 'type'
                 ---@cast node vm.global
@@ -1280,6 +1280,7 @@ local compilerSwitch = util.switch()
         or source.parent.type == 'setlocal'
         or source.parent.type == 'tablefield'
         or source.parent.type == 'tableindex'
+        or source.parent.type == 'tableexp'
         or source.parent.type == 'setfield'
         or source.parent.type == 'setindex' then
             local parentNode = vm.compileNode(source.parent)
@@ -1290,7 +1291,7 @@ local compilerSwitch = util.switch()
                     if not guide.isBasicType(pn.name) then
                         vm.setNode(source, pn)
                     end
-                elseif pn.type == 'doc.type.table' then
+                elseif pn.type == 'doc.type.table' or pn.type == 'doc.type.array' then
                     vm.setNode(source, pn)
                 end
             end
@@ -1496,6 +1497,14 @@ local compilerSwitch = util.switch()
     end)
     : case 'tableexp'
     : call(function (source)
+        if (source.parent.type == 'table') then
+            local node = vm.compileNode(source.parent)
+            for n in node:eachObject() do
+                if n.type == 'doc.type.array' then
+                    vm.setNode(source, vm.compileNode(n.node))
+                end
+            end
+        end
         vm.setNode(source, vm.compileNode(source.value))
     end)
     : case 'function.return'
@@ -1891,6 +1900,10 @@ local function compileByGlobal(source)
                     hasMarkDoc = true
                 end
             end
+        end
+        -- Set all globals node first to avoid recursive
+        for _, set in ipairs(global:getSets(uri)) do
+            vm.setNode(set, globalNode)
         end
         for _, set in ipairs(global:getSets(uri)) do
             if set.value then

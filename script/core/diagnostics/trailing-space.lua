@@ -2,16 +2,6 @@ local files = require 'files'
 local lang  = require 'language'
 local guide = require 'parser.guide'
 
-local function isInString(ast, offset)
-    local result = false
-    guide.eachSourceType(ast, 'string', function (source)
-        if offset >= source.start and offset <= source.finish then
-            result = true
-        end
-    end)
-    return result
-end
-
 return function (uri, callback)
     local state = files.getState(uri)
     local text  = files.getText(uri)
@@ -28,7 +18,8 @@ return function (uri, callback)
             goto NEXT_LINE
         end
         local lastPos = guide.offsetToPosition(state, lastOffset)
-        if isInString(state.ast, lastPos) then
+        if guide.isInString(state.ast, lastPos)
+        or guide.isInComment(state.ast, lastPos) then
             goto NEXT_LINE
         end
         local firstOffset = startOffset

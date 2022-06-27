@@ -12,7 +12,7 @@ local type         = type
 ---@field tag                   string
 ---@field args                  { [integer]: parser.object, start: integer, finish: integer }
 ---@field locals                parser.object[]
----@field returns               parser.object[]
+---@field returns?              parser.object[]
 ---@field exps                  parser.object[]
 ---@field keys                  parser.object[]
 ---@field uri                   uri
@@ -889,6 +889,7 @@ local isSetMap = {
     ['doc.alias.name']    = true,
     ['doc.field.name']    = true,
     ['doc.type.field']    = true,
+    ['doc.type.array']    = true,
 }
 function m.isSet(source)
     local tp = source.type
@@ -1244,6 +1245,15 @@ function m.isInString(ast, position)
             return true
         end
     end)
+end
+
+function m.isInComment(ast, offset)
+    for _, com in ipairs(ast.state.comms) do
+        if offset >= com.start and offset <= com.finish then
+            return true
+        end
+    end
+    return false
 end
 
 function m.isOOP(source)

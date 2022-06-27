@@ -240,14 +240,46 @@ local template = {
                                                     'Warning',
                                                     'Information',
                                                     'Hint',
+                                                    'Error!',
+                                                    'Warning!',
+                                                    'Information!',
+                                                    'Hint!',
                                                 }
                                             )
                                             >> util.deepCopy(define.DiagnosticDefaultSeverity),
     ['Lua.diagnostics.neededFileStatus']    = Type.Hash(
                                                 Type.String << util.getTableKeys(define.DiagnosticDefaultNeededFileStatus, true),
-                                                Type.String << { 'Any', 'Opened', 'None' }
+                                                Type.String << {
+                                                    'Any',
+                                                    'Opened',
+                                                    'None',
+                                                    'Any!',
+                                                    'Opened!',
+                                                    'None!',
+                                                }
                                             )
                                             >> util.deepCopy(define.DiagnosticDefaultNeededFileStatus),
+    ['Lua.diagnostics.groupSeverity']       = Type.Hash(
+                                                Type.String << util.getTableKeys(define.DiagnosticDefaultGroupSeverity, true),
+                                                Type.String << {
+                                                    'Error',
+                                                    'Warning',
+                                                    'Information',
+                                                    'Hint',
+                                                    'Fallback',
+                                                }
+                                            )
+                                            >> util.deepCopy(define.DiagnosticDefaultGroupSeverity),
+    ['Lua.diagnostics.groupFileStatus']     = Type.Hash(
+                                                Type.String << util.getTableKeys(define.DiagnosticDefaultGroupFileStatus, true),
+                                                Type.String << {
+                                                    'Any',
+                                                    'Opened',
+                                                    'None',
+                                                    'Fallback',
+                                                }
+                                            )
+                                            >> util.deepCopy(define.DiagnosticDefaultGroupFileStatus),
     ['Lua.diagnostics.disableScheme']       = Type.Array(Type.String) >> { 'git' },
     ['Lua.diagnostics.workspaceDelay']      = Type.Integer >> 3000,
     ['Lua.diagnostics.workspaceRate']       = Type.Integer >> 100,
@@ -299,7 +331,7 @@ local template = {
     ['Lua.hover.viewString']                = Type.Boolean >> true,
     ['Lua.hover.viewStringMax']             = Type.Integer >> 1000,
     ['Lua.hover.viewNumber']                = Type.Boolean >> true,
-    ['Lua.hover.previewFields']             = Type.Integer >> 20,
+    ['Lua.hover.previewFields']             = Type.Integer >> 50,
     ['Lua.hover.enumsLimit']                = Type.Integer >> 5,
     ['Lua.hover.expandAlias']               = Type.Boolean >> true,
     ['Lua.semantic.enable']                 = Type.Boolean >> true,
@@ -327,6 +359,8 @@ local template = {
                                             >> {},
     ['Lua.spell.dict']                      = Type.Array(Type.String),
     ['Lua.misc.parameters']                 = Type.Array(Type.String),
+    ['Lua.type.castNumberToInteger']        = Type.Boolean >> false,
+    ['Lua.type.weakUnionCheck']             = Type.Boolean >> false,
 
     -- VSCode
     ['files.associations']                  = Type.Hash(Type.String, Type.String),

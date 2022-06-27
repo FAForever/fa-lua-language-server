@@ -239,7 +239,7 @@ local m = {}
 function m:x(a, b)
     return a, b
 end
-m.x(1, 2, 3, <!4!>)
+m.x(m, 2, 3, <!4!>)
 ]]
 
 TEST [[
@@ -439,12 +439,14 @@ local <!x!> = {}
 
 TEST [[
 local function f(<!self!>)
+    return 'something'
 end
 f()
 ]]
 
 TEST [[
 local function f(<!...!>)
+    return 'something'
 end
 f()
 ]]
@@ -469,7 +471,7 @@ local mt = {}
 function mt:f(a, b)
     return a, b
 end
-mt.f(1, 2, 3, <!4!>)
+mt.f(mt, 2, 3, <!4!>)
 ]]
 
 
@@ -569,7 +571,7 @@ local m = {}
 function m:open()
 end
 
-m.open('ok')
+m.open(m)
 ]]
 
 TEST [[
@@ -1007,9 +1009,9 @@ function mt2:method2() end
 local v
 ---@type Bar
 local v2
-v2 = v -- TODO 这里应该给警告
-v2:<!method1!>()
-v2:method2()
+<!v2!> = v
+v2:method1()
+v2:<!method2!>()
 ]]
 
 TEST [[
@@ -1043,20 +1045,6 @@ end
 TEST [[
 for i = 1, 1 do
     print(i)
-end
-]]
-
-TEST [[
----@param a number
-return function (<!a!>)
-end
-]]
-
-TEST [[
----@meta
-
----@param a number
-return function (a)
 end
 ]]
 
@@ -1612,4 +1600,98 @@ local f
 local function foo(x) end
 
 foo(f())
+]]
+
+TEST [[
+---@type string|table
+local n
+
+print(n.x)
+]]
+
+TEST [[
+---@diagnostic disable: unused-local, unused-function, undefined-global
+
+function F() end
+
+---@param x boolean
+function F(x) end
+
+F(k())
+]]
+
+TEST [[
+local function f()
+    return 1, 2, 3
+end
+
+local function k()
+end
+
+k(<!f()!>)
+]]
+
+TEST [[
+---@diagnostic disable: unused-local
+local function f()
+    return 1, 2, 3
+end
+
+---@param x integer
+local function k(x)
+end
+
+k(f())
+]]
+
+TEST [[
+---@cast <!x!> integer
+]]
+
+TEST [[
+---@class A
+
+---@class B
+---@field [integer] A
+---@field [A] true
+]]
+
+TEST [[
+---@class A
+
+---@class B
+---@field [A] A
+---@field [<!A!>] true
+]]
+
+TEST [[
+---@diagnostic disable: unused-local
+
+---@type 'x'
+local t
+
+local n = t:upper()
+]]
+
+TEST [[
+---@diagnostic disable: unused-local
+
+---@alias A 'x'
+
+---@type A
+local t
+
+local n = t:upper()
+]]
+
+TEST [[
+local t = {}
+
+function t:init() end
+
+<!t.init()!>
+]]
+
+TEST [[
+return function f(x, y, z) end
 ]]

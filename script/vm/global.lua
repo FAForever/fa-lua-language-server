@@ -12,8 +12,8 @@ local vm    = require 'vm.vm'
 
 ---@class vm.global
 ---@field links table<uri, vm.global.link>
----@field setsCache table<uri, parser.object[]>
----@field getsCache table<uri, parser.object[]>
+---@field setsCache? table<uri, parser.object[]>
+---@field getsCache? table<uri, parser.object[]>
 ---@field cate vm.global.cate
 local mt = {}
 mt.__index = mt
@@ -128,7 +128,7 @@ local function createGlobal(name, cate)
 end
 
 ---@class parser.object
----@field _globalNode vm.global
+---@field _globalNode vm.global|false
 
 ---@type table<string, vm.global>
 local allGlobals = {}
@@ -162,6 +162,9 @@ local compilerGlobalSwitch = util.switch()
     : call(function (source)
         local uri    = guide.getUri(source)
         local name   = guide.getKeyName(source)
+        if not name then
+            return
+        end
         local global = vm.declareGlobal('variable', name, uri)
         global:addSet(uri, source)
         source._globalNode = global
@@ -170,6 +173,9 @@ local compilerGlobalSwitch = util.switch()
     : call(function (source)
         local uri    = guide.getUri(source)
         local name   = guide.getKeyName(source)
+        if not name then
+            return
+        end
         local global = vm.declareGlobal('variable', name, uri)
         global:addGet(uri, source)
         source._globalNode = global
@@ -272,6 +278,9 @@ local compilerGlobalSwitch = util.switch()
     : call(function (source)
         local uri  = guide.getUri(source)
         local name = guide.getKeyName(source)
+        if not name then
+            return
+        end
         local class = vm.declareGlobal('type', name, uri)
         class:addSet(uri, source)
         source._globalNode = class
@@ -294,6 +303,9 @@ local compilerGlobalSwitch = util.switch()
     : call(function (source)
         local uri  = guide.getUri(source)
         local name = guide.getKeyName(source)
+        if not name then
+            return
+        end
         local alias = vm.declareGlobal('type', name, uri)
         alias:addSet(uri, source)
         source._globalNode = alias

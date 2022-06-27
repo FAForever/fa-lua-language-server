@@ -12,6 +12,7 @@ local scope     = require 'workspace.scope'
 local inspect   = require 'inspect'
 
 local m = {}
+m._eventList = {}
 
 function m.client(newClient)
     if newClient then
@@ -112,7 +113,7 @@ end
 ---@param type message.type
 ---@param message string
 ---@param titles  string[]
----@param callback fun(action: string, index: integer)
+---@param callback fun(action?: string, index?: integer)
 function m.requestMessage(type, message, titles, callback)
     proto.notify('window/logMessage', {
         type = define.MessageType[type] or 3,
@@ -389,8 +390,22 @@ function m.editText(uri, edits)
     })
 end
 
+---@param callback async fun()
+function m.event(callback)
+    m._eventList[#m._eventList+1] = callback
+end
+
+function m._callEvent(ev)
+    for _, callback in ipairs(m._eventList) do
+        await.call(function ()
+            callback(ev)
+        end)
+    end
+end
+
 function m.setReady()
     m._ready = true
+    m._callEvent('ready')
 end
 
 function m.isReady()
@@ -415,6 +430,7 @@ function m.init(t)
     lang(LOCALE or t.locale)
     converter.setOffsetEncoding(m.getOffsetEncoding())
     hookPrint()
+    m._callEvent('init')
 end
 
 return m

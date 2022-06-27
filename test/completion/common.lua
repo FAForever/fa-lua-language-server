@@ -3382,3 +3382,39 @@ f(<??>)
         kind  = define.CompletionItemKind.EnumMember,
     },
 }
+
+TEST [[
+return function ()
+    local function fff(xxx)
+        for f in xx<??>
+    end
+end
+]]
+{
+    {
+        label = 'xxx',
+        kind  = define.CompletionItemKind.Variable,
+    },
+}
+
+TEST [[
+---@class A
+---@field xxx 'aaa'|'bbb'
+
+---@type A
+local t = {
+    xxx = '<??>
+}
+]]
+{
+    {
+        label    = "'aaa'",
+        kind     = define.CompletionItemKind.EnumMember,
+        textEdit = EXISTS,
+    },
+    {
+        label    = "'bbb'",
+        kind     = define.CompletionItemKind.EnumMember,
+        textEdit = EXISTS,
+    },
+}

@@ -7,9 +7,12 @@ local vm     = require 'vm'
 rawset(_G, 'TEST', true)
 
 local function getSource(pos)
-    local ast = files.getState('')
+    local state = files.getState('')
+    if not state then
+        return
+    end
     local result
-    guide.eachSourceContain(ast.ast, pos, function (source)
+    guide.eachSourceContain(state.ast, pos, function (source)
         if source.type == 'local'
         or source.type == 'getlocal'
         or source.type == 'setlocal'
@@ -210,6 +213,27 @@ TEST 'integer' [[
 <?x?> = 1 + 2
 ]]
 
+TEST 'integer' [[
+---@type integer
+local a
+
+<?x?> = - a
+]]
+
+TEST 'number' [[
+local a
+
+<?x?> = - a
+]]
+
+TEST 'integer' [[
+<?x?> = 1 + X
+]]
+
+TEST 'number' [[
+<?x?> = 1.0 + X
+]]
+
 TEST 'tablelib' [[
 ---@class tablelib
 table = {}
@@ -296,7 +320,7 @@ end
 <?y?> = x()
 ]]
 
-TEST 'unknown' [[
+TEST 'unknown|nil' [[
 local function x()
     return nil
     return f()
@@ -486,12 +510,12 @@ TEST 'fun()' [[
 local <?x?>
 ]]
 
-TEST 'fun(a: string, b: any, ...: any)' [[
+TEST 'fun(a: string, b: any, ...any)' [[
 ---@type fun(a: string, b, ...)
 local <?x?>
 ]]
 
-TEST 'fun(a: string, b: any, c?: boolean, ...: any):c, d?, ...' [[
+TEST 'fun(a: string, b: any, c?: boolean, ...any):c, d?, ...' [[
 ---@type fun(a: string, b, c?: boolean, ...):c, d?, ...
 local <?x?>
 ]]
@@ -2347,7 +2371,7 @@ end
 print(t)
 ]]
 
-TEST 'table|unknown' [[
+TEST 'table' [[
 local function f()
     if x then
         return y
@@ -2358,7 +2382,7 @@ end
 local <?z?> = f()
 ]]
 
-TEST 'number|table' [[
+TEST 'integer|table' [[
 local function returnI()
     return a + 1
 end
@@ -2649,4 +2673,479 @@ local x
 x = call(x)
 
 print(<?x?>)
+]]
+
+TEST 'nil' [[
+local function f()
+end
+
+local <?x?> = f()
+]]
+
+TEST 'integer[]' [[
+---@type integer[]
+local x
+if not x then
+    return
+end
+
+print(<?x?>)
+]]
+
+TEST 'unknown' [[
+---@type string[]
+local t
+
+local <?x?> = t.x
+]]
+
+TEST 'integer|unknown' [[
+local function f()
+    return GG
+end
+
+local t
+
+t.x = 1
+t.x = f()
+
+print(t.<?x?>)
+]]
+
+TEST 'integer' [[
+local function f()
+    if X then
+        return X
+    else
+        return 1
+    end
+end
+
+local <?n?> = f()
+]]
+
+TEST 'unknown' [[
+local function f()
+    return t[k]
+end
+
+local <?n?> = f()
+]]
+
+TEST 'integer|nil' [[
+local function f()
+    if x then
+        return
+    else
+        return 1
+    end
+end
+
+local <?n?> = f()
+]]
+
+TEST 'integer' [[
+---@class A
+---@field x integer
+local m
+
+m.<?x?> = true
+
+print(m.x)
+]]
+
+TEST 'integer' [[
+---@class A
+---@field x integer
+local m
+
+m.x = true
+
+print(m.<?x?>)
+]]
+
+TEST 'integer' [[
+---@class A
+---@field x integer --> 1st
+local m = {
+    x = '' --> 2nd
+}
+
+---@type boolean
+m.x = true --> 3rd (with ---@type above)
+
+m.x = {} --> 4th
+
+print(m.<?x?>)
+]]
+
+TEST 'string' [[
+---@class A
+----@field x integer --> 1st
+local m = {
+    x = '' --> 2nd
+}
+
+---@type boolean
+m.x = true --> 3rd (with ---@type above)
+
+m.x = {} --> 4th
+
+print(m.<?x?>)
+]]
+
+TEST 'boolean' [[
+---@class A
+----@field x integer --> 1st
+local m = {
+    --x = '' --> 2nd
+}
+
+---@type boolean
+m.x = true --> 3rd (with ---@type above)
+
+m.x = {} --> 4th
+
+print(m.<?x?>)
+]]
+
+TEST 'table' [[
+---@class A
+----@field x integer --> 1st
+local m = {
+    --x = '' --> 2nd
+}
+
+---@type boolean
+--m.x = true --> 3rd (with ---@type above)
+
+m.x = {} --> 4th
+
+print(m.<?x?>)
+]]
+
+TEST 'boolean?' [[
+---@generic T
+---@param x T
+---@return T
+local function echo(x) end
+
+---@type boolean?
+local b
+
+local <?x?> = echo(b)
+]]
+
+TEST 'boolean' [[
+---@generic T
+---@param x T?
+---@return T
+local function echo(x) end
+
+---@type boolean?
+local b
+
+local <?x?> = echo(b)
+]]
+
+TEST 'boolean' [[
+---@generic T
+---@param x? T
+---@return T
+local function echo(x) end
+
+---@type boolean?
+local b
+
+local <?x?> = echo(b)
+]]
+
+TEST 'boolean' [[
+---@return boolean
+function f()
+end
+
+---@param x integer
+---@return number
+function f(x)
+end
+
+local <?x?> = f()
+]]
+
+TEST 'number' [[
+---@return boolean
+function f()
+end
+
+---@param x integer
+---@return number
+function f(x)
+end
+
+local <?x?> = f(1)
+]]
+
+TEST 'boolean' [[
+---@return boolean
+function f()
+end
+
+---@param x integer
+---@return number
+function f(x)
+end
+
+function r0()
+    return
+end
+
+local <?x?> = f(r0())
+]]
+
+TEST 'number' [[
+---@return boolean
+function f()
+end
+
+---@param x integer
+---@return number
+function f(x)
+end
+
+function r1()
+    return 1
+end
+
+local <?x?> = f(r1())
+]]
+
+TEST 'boolean' [[
+---@return boolean
+function f()
+end
+
+---@param x integer
+---@return number
+function f(x)
+end
+
+---@type fun()
+local r0
+
+local <?x?> = f(r0())
+]]
+
+TEST 'number' [[
+---@return boolean
+function f()
+end
+
+---@param x integer
+---@return number
+function f(x)
+end
+
+---@type fun():integer
+local r1
+
+local <?x?> = f(r1())
+]]
+
+TEST 'boolean' [[
+---@overload fun(x: number, y: number):string
+---@overload fun(x: number):number
+---@return boolean
+local function f() end
+
+local <?n1?> = f()
+local n2 = f(0)
+local n3 = f(0, 0)
+]]
+
+TEST 'number' [[
+---@overload fun(x: number, y: number):string
+---@overload fun(x: number):number
+---@return boolean
+local function f() end
+
+local n1 = f()
+local <?n2?> = f(0)
+local n3 = f(0, 0)
+]]
+
+TEST 'string' [[
+---@overload fun(x: number, y: number):string
+---@overload fun(x: number):number
+---@return boolean
+local function f() end
+
+local n1 = f()
+local n2 = f(0)
+local <?n3?> = f(0, 0)
+]]
+
+TEST 'boolean' [[
+---@type {[integer]: boolean, xx: integer}
+local t
+
+local <?n?> = t[1]
+]]
+
+TEST 'boolean' [[
+---@type integer
+local i
+
+---@type {[integer]: boolean, xx: integer}
+local t
+
+local <?n?> = t[i]
+]]
+
+TEST 'string' [=[
+local x = true
+local y = x--[[@as integer]] --is `integer` here
+local z = <?x?>--[[@as string]] --is `true` here
+]=]
+
+TEST 'integer' [[
+---@type integer
+local x
+
+if type(x) == 'number' then
+    print(<?x?>)
+end
+]]
+
+TEST 'boolean' [[
+---@class A
+---@field [integer] boolean
+local mt
+
+function mt:f()
+    ---@type integer
+    local index
+    local <?x?> = self[index]
+end
+]]
+
+TEST 'boolean' [[
+---@class A
+---@field [B] boolean
+
+---@class B
+
+---@type A
+local a
+
+---@type B
+local b
+
+local <?x?> = a[b]
+]]
+
+TEST 'number' [[
+---@type {x: string ; y: boolean; z: number}
+local t
+
+local <?z?> = t.z
+]]
+
+TEST 'fun():number, boolean' [[
+---@type {f: fun():number, boolean}
+local t
+
+local <?f?> = t.f
+]]
+
+TEST 'fun():number' [[
+---@type {(f: fun():number), x: boolean}
+local t
+
+local <?f?> = t.f
+]]
+
+TEST 'boolean' [[
+---@param ... boolean
+local function f(...)
+    local <?n?> = ...
+end
+]]
+
+TEST 'boolean' [[
+---@param ... boolean
+local function f(...)
+    local _, <?n?> = ...
+end
+]]
+
+TEST 'boolean' [[
+---@return boolean ...
+local function f() end
+
+local <?n?> = f()
+]]
+
+TEST 'boolean' [[
+---@return boolean ...
+local function f() end
+
+local _, <?n?> = f()
+]]
+
+TEST 'boolean' [[
+---@type fun():name1: boolean, name2:number
+local f
+
+local <?n?> = f()
+]]
+
+TEST 'number' [[
+---@type fun():name1: boolean, name2:number
+local f
+
+local _, <?n?> = f()
+]]
+TEST 'boolean' [[
+---@type fun():(name1: boolean, name2:number)
+local f
+
+local <?n?> = f()
+]]
+
+TEST 'number' [[
+---@type fun():(name1: boolean, name2:number)
+local f
+
+local _, <?n?> = f()
+]]
+
+TEST 'boolean' [[
+---@type fun():...: boolean
+local f
+
+local _, <?n?> = f()
+]]
+
+TEST 'string' [[
+local s
+while true do
+    s = ''
+end
+print(<?s?>)
+]]
+
+TEST 'string' [[
+local s
+for _ in _ do
+    s = ''
+end
+print(<?s?>)
+]]
+
+TEST 'A' [[
+---@class A: string
+
+---@type A
+local <?s?> = ''
 ]]

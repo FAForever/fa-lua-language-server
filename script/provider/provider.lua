@@ -329,7 +329,7 @@ m.register 'textDocument/hover' {
         end
         local pos = converter.unpackPosition(uri, params.position)
         local hover, source = core.byUri(uri, pos)
-        if not hover then
+        if not hover or not source then
             return nil
         end
         return {
@@ -921,29 +921,35 @@ local function toArray(map)
     return array
 end
 
-m.register 'textDocument/semanticTokens/full' {
-    capability = {
-        semanticTokensProvider = {
-            legend = {
-                tokenTypes     = toArray(define.TokenTypes),
-                tokenModifiers = toArray(define.TokenModifiers),
-            },
-            full  = true,
-        },
-    },
-    ---@async
-    function (params)
-        log.debug('textDocument/semanticTokens/full')
-        local uri = files.getRealUri(params.textDocument.uri)
-        workspace.awaitReady(uri)
-        local _ <close> = progress.create(uri, lang.script.WINDOW_PROCESSING_SEMANTIC_FULL, 0.5)
-        local core = require 'core.semantic-tokens'
-        local results = core(uri, 0, math.huge)
-        return {
-            data = results
-        }
+client.event(function (ev)
+    if ev == 'init' then
+        if not client.isVSCode() then
+            m.register 'textDocument/semanticTokens/full' {
+                capability = {
+                    semanticTokensProvider = {
+                        legend = {
+                            tokenTypes     = toArray(define.TokenTypes),
+                            tokenModifiers = toArray(define.TokenModifiers),
+                        },
+                        full  = true,
+                    },
+                },
+                ---@async
+                function (params)
+                    log.debug('textDocument/semanticTokens/full')
+                    local uri = files.getRealUri(params.textDocument.uri)
+                    workspace.awaitReady(uri)
+                    local _ <close> = progress.create(uri, lang.script.WINDOW_PROCESSING_SEMANTIC_FULL, 0.5)
+                    local core = require 'core.semantic-tokens'
+                    local results = core(uri, 0, math.huge)
+                    return {
+                        data = results
+                    }
+                end
+            }
+        end
     end
-}
+end)
 
 m.register 'textDocument/semanticTokens/range' {
     capability = {
@@ -1020,6 +1026,7 @@ m.register '$/status/click' {
         local titleDiagnostic = lang.script.WINDOW_LUA_STATUS_DIAGNOSIS_TITLE
         local result = client.awaitRequestMessage('Info', lang.script.WINDOW_LUA_STATUS_DIAGNOSIS_MSG, {
             titleDiagnostic,
+            DEVELOP and 'Restart Server',
         })
         if not result then
             return
@@ -1029,6 +1036,10 @@ m.register '$/status/click' {
             for _, scp in ipairs(workspace.folders) do
                 diagnostic.diagnosticsScope(scp.uri, true)
             end
+        elseif result == 'Restart Server' then
+            local diag = require 'provider.diagnostic'
+            diag.clearAll(true)
+            os.exit(0, true)
         end
     end
 }

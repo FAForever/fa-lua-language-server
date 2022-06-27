@@ -667,6 +667,14 @@ local Care = util.switch()
             type   = define.TokenTypes.keyword,
         }
     end)
+    : case 'doc.cast.block'
+    : call(function (source, options, results)
+        results[#results+1] = {
+            start      = source.start,
+            finish     = source.finish,
+            type       = define.TokenTypes.keyword,
+        }
+    end)
     : case 'doc.cast.name'
     : call(function (source, options, results)
         results[#results+1] = {
@@ -820,9 +828,13 @@ return function (uri, start, finish)
         keyword    = config.get(uri, 'Lua.semantic.keyword'),
     }
 
+    local n = 0
     guide.eachSourceBetween(state.ast, start, finish, function (source) ---@async
         Care(source.type, source, options, results)
-        await.delay()
+        n = n + 1
+        if n % 100 == 0 then
+            await.delay()
+        end
     end)
 
     for _, comm in ipairs(state.comms) do

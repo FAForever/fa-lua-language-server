@@ -66,6 +66,9 @@ end
 local function findNearestTableField(state, position)
     local uri     = state.uri
     local text    = files.getText(uri)
+    if not text then
+        return nil
+    end
     local offset  = guide.positionToOffset(state, position)
     local soffset = lookBackward.findAnyOffset(text, offset)
     if not soffset then
@@ -162,7 +165,8 @@ local function buildFunctionSnip(source, value, oop)
         truncated = true
     end
     for i = #args, 1, -1 do
-        if args[i]:match('^%s*[^?]+%?:') then
+        if args[i]:match('^%s*[^?]+%?:')
+        or args[i]:match('^%.%.%.') then
             table.remove(args)
             truncated = true
         else
@@ -204,6 +208,9 @@ local function getSnip(source)
             local uri = guide.getUri(def)
             local text = files.getText(uri)
             local state = files.getState(uri)
+            if not state then
+                goto CONTINUE
+            end
             local lines = state.lines
             if not text then
                 goto CONTINUE
@@ -1103,7 +1110,7 @@ local function tryLabelInString(label, source)
     if not state or not state.ast then
         return label
     end
-    if not matchKey(source[1], state.ast[1]) then
+    if not matchKey(source[1], state.ast[1]--[[@as string]]) then
         return nil
     end
     return util.viewString(state.ast[1], source[2])
@@ -1213,6 +1220,10 @@ local function checkEqualEnumInString(state, position, results)
     or parent.type == 'setindex' then
         checkEqualEnumLeft(state, position, parent.node, results)
     end
+    if parent.type == 'tablefield'
+    or parent.type == 'tableindex' then
+        checkEqualEnumLeft(state, position, parent, results)
+    end
 end
 
 local function isFuncArg(state, position)
@@ -1241,7 +1252,10 @@ local function tryIndex(state, position, results)
     if not parent then
         return
     end
-    local word = parent.next.index[1]
+    local word = parent.next and parent.next.index and parent.next.index[1]
+    if not word then
+        return
+    end
     checkField(state, word, position, position, parent, oop, results)
 end
 
@@ -1426,6 +1440,7 @@ local function tryCallArg(state, position, results)
         if src.type == 'doc.type.string'
         or src.type == 'doc.type.integer'
         or src.type == 'doc.type.boolean' then
+            ---@cast src parser.object
             enums[#enums+1] = {
                 label       = vm.viewObject(src, state.uri),
                 description = src.comment,
@@ -1439,6 +1454,7 @@ local function tryCallArg(state, position, results)
             }
         end
         if src.type == 'doc.type.function' then
+            ---@cast src parser.object
             local insertText = buildInsertDocFunction(src)
             local description
             if src.comment then

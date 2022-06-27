@@ -17,6 +17,7 @@ end
 ---@class config.loader
 local m = {}
 
+---@return table
 function m.loadRCConfig(uri, filename)
     local scp  = scope.getScope(uri)
     local path = workspace.getAbsolutePath(uri, filename)
@@ -38,6 +39,7 @@ function m.loadRCConfig(uri, filename)
     return res
 end
 
+---@return table?
 function m.loadLocalConfig(uri, filename)
     local scp  = scope.getScope(uri)
     local path = workspace.getAbsolutePath(uri, filename)

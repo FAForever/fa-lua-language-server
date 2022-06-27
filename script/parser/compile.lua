@@ -1024,7 +1024,7 @@ local function parseShortString()
                 fastForwardToken(currentOffset)
                 local right = getPosition(currentOffset - 1, 'right')
                 local byte = tointeger(numbers)
-                if byte <= 255 then
+                if byte and byte <= 255 then
                     stringIndex = stringIndex + 1
                     stringPool[stringIndex] = schar(byte)
                 else
@@ -1641,13 +1641,14 @@ local function parseTable()
                         }
                     end
                     wantSep = true
-                    local eqRight = lastRightPosition()
                     skipSpace()
                     local fvalue = parseExp()
                     local tfield = {
                         type   = 'tablefield',
                         start  = name.start,
-                        finish = fvalue and fvalue.finish or eqRight,
+                        finish = name.finish,
+                        range  = fvalue and fvalue.finish,
+                        node   = tbl,
                         parent = tbl,
                         field  = name,
                         value  = fvalue,
@@ -1710,6 +1711,7 @@ local function parseTable()
             local tindex = parseIndex()
             skipSpace()
             tindex.type   = 'tableindex'
+            tindex.node   = tbl
             tindex.parent = tbl
             index = index + 1
             tbl[index] = tindex
@@ -1718,7 +1720,7 @@ local function parseTable()
                 local ivalue = parseExp()
                 if ivalue then
                     ivalue.parent = tindex
-                    tindex.finish = ivalue.finish
+                    tindex.range  = ivalue.finish
                     tindex.value  = ivalue
                 else
                     missExp()
@@ -2367,6 +2369,7 @@ local function parseFunction(isLocal, isAction)
         func.finish     = endRight
         Index = Index + 2
     else
+        func.finish = lastRightPosition()
         missEnd(funcLeft, funcRight)
     end
     LocalCount = LastLocalCount
@@ -3874,6 +3877,7 @@ local function initState(lua, version, options)
     Chunk               = {}
     Tokens              = tokens(lua)
     Index               = 1
+    ---@class parser.state
     local state = {
         version = version,
         lua     = lua,

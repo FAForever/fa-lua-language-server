@@ -10,7 +10,7 @@ local type         = type
 ---@field type                  string
 ---@field special               string
 ---@field tag                   string
----@field args                  parser.object[]
+---@field args                  { [integer]: parser.object, start: integer, finish: integer }
 ---@field locals                parser.object[]
 ---@field returns               parser.object[]
 ---@field exps                  parser.object[]
@@ -68,6 +68,7 @@ local type         = type
 ---@field hasReturn?            true
 ---@field hasBreak?             true
 ---@field hasError?             true
+---@field [integer]             parser.object|any
 ---@field _root                 parser.object
 
 ---@class guide
@@ -239,7 +240,7 @@ local function formatNumber(n)
 end
 
 --- 是否是字面量
----@param obj parser.object
+---@param obj table
 ---@return boolean
 function m.isLiteral(obj)
     local tp = obj.type
@@ -256,6 +257,7 @@ function m.isLiteral(obj)
         or tp == 'doc.type.integer'
         or tp == 'doc.type.boolean'
         or tp == 'doc.type.code'
+        or tp == 'doc.type.array'
 end
 
 --- 获取字面量
@@ -476,7 +478,9 @@ function m.getLocal(source, name, pos)
         if not block then
             return nil
         end
-        if block.start <= pos and block.finish >= pos then
+        if  block.start <= pos
+        and block.finish >= pos
+        and blockTypes[block.type] then
             break
         end
         block = block.parent
@@ -821,6 +825,8 @@ function m.positionToOffset(state, position)
     return m.positionToOffsetByLines(state.lines, position)
 end
 
+---@param lines integer[]
+---@param offset integer
 function m.offsetToPositionByLines(lines, offset)
     local left  = 0
     local right = #lines
@@ -1260,6 +1266,7 @@ local basicTypeMap = {
     ['false']    = true,
     ['nil']      = true,
     ['boolean']  = true,
+    ['integer']  = true,
     ['number']   = true,
     ['string']   = true,
     ['table']    = true,

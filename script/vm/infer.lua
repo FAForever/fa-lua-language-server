@@ -155,31 +155,53 @@ local viewNodeSwitch = util.switch()
                 argNode = argNode:copy()
                 argNode:removeOptional()
             end
-            args[i] = string.format('%s%s: %s'
+            args[i] = string.format('%s%s%s%s'
                 , arg.name[1]
                 , isOptional and '?' or ''
+                , arg.name[1] == '...' and '' or ': '
                 , vm.getInfer(argNode):view(uri)
             )
         end
         if #args > 0 then
             argView = table.concat(args, ', ')
         end
+        local needReturnParen
         for i, ret in ipairs(source.returns) do
-            rets[i] = vm.getInfer(ret):view(uri)
+            local retType = vm.getInfer(ret):view(uri)
+            if ret.name then
+                if ret.name[1] == '...' then
+                    rets[i] = ('%s%s'):format(ret.name[1], retType)
+                else
+                    needReturnParen = true
+                    rets[i] = ('%s: %s'):format(ret.name[1], retType)
+                end
+            else
+                rets[i] = retType
+            end
         end
         if #rets > 0 then
-            regView = ':' .. table.concat(rets, ', ')
+            if needReturnParen then
+                regView = (':(%s)'):format(table.concat(rets, ', '))
+            else
+                regView = (':%s'):format(table.concat(rets, ', '))
+            end
         end
         return ('fun(%s)%s'):format(argView, regView)
     end)
 
----@param source parser.object | vm.node
+---@class vm.node
+---@field lastInfer? vm.infer
+
+---@param source vm.object | vm.node
 ---@return vm.infer
 function vm.getInfer(source)
+    ---@type vm.node
     local node
     if source.type == 'vm.node' then
+        ---@cast source vm.node
         node = source
     else
+        ---@cast source vm.object
         node = vm.compileNode(source)
     end
     if node.lastInfer then
@@ -244,6 +266,16 @@ function mt:_eraseAlias(uri)
                         end
                     end
                 end
+                if set.type == 'doc.class' then
+                    if set.extends then
+                        for _, ext in ipairs(set.extends) do
+                            if ext.type == 'doc.extends.name' then
+                                local view = ext[1]
+                                drop[view] = true
+                            end
+                        end
+                    end
+                end
             end
             LOCK[n.name] = nil
             ::CONTINUE::
@@ -258,6 +290,19 @@ end
 function mt:hasType(uri, tp)
     self:_computeViews(uri)
     return self.views[tp] == true
+end
+
+---@param uri uri
+function mt:hasUnknown(uri)
+    self:_computeViews(uri)
+    return not next(self.views)
+        or self.views['unknown'] == true
+end
+
+---@param uri uri
+function mt:hasAny(uri)
+    self:_computeViews(uri)
+    return self.views['any'] == true
 end
 
 ---@param uri uri
@@ -424,7 +469,7 @@ function mt:viewClass()
     return table.concat(class, '|')
 end
 
----@param source parser.object
+---@param source vm.node.object
 ---@param uri uri
 ---@return string?
 function vm.viewObject(source, uri)

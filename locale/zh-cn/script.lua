@@ -102,8 +102,8 @@ DIAG_CIRCLE_DOC_CLASS                 =
 '循环继承的类。'
 DIAG_DOC_FIELD_NO_CLASS               =
 '字段必须定义在类之后。'
-DIAG_DUPLICATE_DOC_CLASS              =
-'重复定义的类 `{}`。'
+DIAG_DUPLICATE_DOC_ALIAS              =
+'重复定义的别名 `{}`。'
 DIAG_DUPLICATE_DOC_FIELD              =
 '重复定义的字段 `{}`。'
 DIAG_DUPLICATE_DOC_PARAM              =
@@ -116,6 +116,18 @@ DIAG_UNDEFINED_DOC_PARAM              =
 '指向了未定义的参数 `{}`。'
 DIAG_UNKNOWN_DIAG_CODE                =
 '未知的诊断代号 `{}`。'
+DIAG_CAST_LOCAL_TYPE                  =
+'已显式定义变量的类型为 `{def}` ，不能再将其类型转换为 `{ref}`。'
+DIAG_CAST_FIELD_TYPE                  =
+'已显式定义字段的类型为 `{def}` ，不能再将其类型转换为 `{ref}`。'
+DIAG_ASSIGN_TYPE_MISMATCH             =
+'不能将 `{ref}` 赋值给 `{def}`。'
+DIAG_PARAM_TYPE_MISMATCH              =
+'不能将 `{ref}` 赋给参数 `{def}`。'
+DIAG_UNKNOWN_CAST_VARIABLE            =
+'未知的类型转换变量 `{}`。'
+DIAG_CAST_TYPE_MISMATCH               =
+'不能将 `{ref}` 转换为 `{def}`。'
 
 MWS_NOT_SUPPORT         =
 '{} 目前还不支持多工作目录，我可能需要重启才能支持新的工作目录...'
@@ -712,7 +724,7 @@ function getTags(item) end
 ]=]
 LUADOC_DESC_FIELD = -- TODO: need translate!
 [=[
-Decalare a field in a class/table. This allows you to provide more in-depth
+Declare a field in a class/table. This allows you to provide more in-depth
 documentation for a table.
 
 ## Syntax
@@ -920,7 +932,7 @@ local unused = "hello world"
 ]=]
 LUADOC_DESC_MODULE = -- TODO: need translate!
 [=[
-Provides the semantics of `reqire`.
+Provides the semantics of `require`.
 
 ## Syntax
 `---@module <'module_name'>`
@@ -961,8 +973,6 @@ LUADOC_DESC_CAST = -- TODO: need translate!
 [=[
 Allows type casting (type conversion).
 
-⚠️ **Not Finalized**
-
 ## Syntax
 `@cast <variable> <[+|-]type>[, <[+|-]type>]...`
 
@@ -992,5 +1002,5 @@ local x --> string|table
 print(x) --> table
 ```
 ---
-[View Proposal](https://github.com/sumneko/lua-language-server/issues/1030)
+[View Wiki](https://github.com/sumneko/lua-language-server/wiki/EmmyLua-Annotations#cast)
 ]=]

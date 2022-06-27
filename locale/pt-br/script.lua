@@ -102,8 +102,8 @@ DIAG_CIRCLE_DOC_CLASS                 =
 'Classes com herança cíclica.'
 DIAG_DOC_FIELD_NO_CLASS               =
 'O campo deve ser definido após a classe.'
-DIAG_DUPLICATE_DOC_CLASS              =
-'Classe definida duplicada `{}`.'
+DIAG_DUPLICATE_DOC_ALIAS              = -- TODO: need translate!
+'Duplicate defined alias `{}`.'
 DIAG_DUPLICATE_DOC_FIELD              =
 'Campos definidos duplicados `{}`.'
 DIAG_DUPLICATE_DOC_PARAM              =
@@ -116,6 +116,18 @@ DIAG_UNDEFINED_DOC_PARAM              =
 'Parâmetro indefinido `{}`.'
 DIAG_UNKNOWN_DIAG_CODE                =
 'Código de diagnóstico desconhecido `{}`.'
+DIAG_CAST_LOCAL_TYPE                  = -- TODO: need translate!
+'This variable has explicitly defined as `{def}`. Cannot convert its type to `{ref}`.'
+DIAG_CAST_FIELD_TYPE                  = -- TODO: need translate!
+'This field has explicitly defined as `{def}`. Cannot convert its type to `{ref}`.'
+DIAG_ASSIGN_TYPE_MISMATCH             = -- TODO: need translate!
+'Cannot assign `{ref}` to `{def}`.'
+DIAG_PARAM_TYPE_MISMATCH              = -- TODO: need translate!
+'Cannot assign `{ref}` to parameter `{def}`.'
+DIAG_UNKNOWN_CAST_VARIABLE            = -- TODO: need translate!
+'Unknown type conversion variable `{}`.'
+DIAG_CAST_TYPE_MISMATCH               = -- TODO: need translate!
+'Cannot convert `{ref}` to `{def}`。'
 
 MWS_NOT_SUPPORT         =
 '{} não é suportado múltiplos espaços de trabalho por enquanto, posso precisar reiniciar para estabelecer um novo espaço de trabalho ...'
@@ -712,7 +724,7 @@ function getTags(item) end
 ]=]
 LUADOC_DESC_FIELD = -- TODO: need translate!
 [=[
-Decalare a field in a class/table. This allows you to provide more in-depth
+Declare a field in a class/table. This allows you to provide more in-depth
 documentation for a table.
 
 ## Syntax
@@ -920,7 +932,7 @@ local unused = "hello world"
 ]=]
 LUADOC_DESC_MODULE = -- TODO: need translate!
 [=[
-Provides the semantics of `reqire`.
+Provides the semantics of `require`.
 
 ## Syntax
 `---@module <'module_name'>`
@@ -961,8 +973,6 @@ LUADOC_DESC_CAST = -- TODO: need translate!
 [=[
 Allows type casting (type conversion).
 
-⚠️ **Not Finalized**
-
 ## Syntax
 `@cast <variable> <[+|-]type>[, <[+|-]type>]...`
 
@@ -992,5 +1002,5 @@ local x --> string|table
 print(x) --> table
 ```
 ---
-[View Proposal](https://github.com/sumneko/lua-language-server/issues/1030)
+[View Wiki](https://github.com/sumneko/lua-language-server/wiki/EmmyLua-Annotations#cast)
 ]=]

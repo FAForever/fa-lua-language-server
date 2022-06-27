@@ -76,8 +76,8 @@ local function eachOfFolder(nameCollect, scp)
     ---@type any
     local value
 
-    ---@return nil|any
-    ---@return nil|string
+    ---@return any
+    ---@return uri
     local function getNext()
         curi, value = next(nameCollect, curi)
         if not curi then
@@ -97,6 +97,8 @@ end
 local function eachOfLinked(nameCollect, scp)
     local curi, value
 
+    ---@return any
+    ---@return uri
     local function getNext()
         curi, value = next(nameCollect, curi)
         if not curi then
@@ -127,6 +129,8 @@ end
 local function eachOfFallback(nameCollect, scp)
     local curi, value
 
+    ---@return any
+    ---@return uri
     local function getNext()
         curi, value = next(nameCollect, curi)
         if not curi then
@@ -153,7 +157,7 @@ end
 --- Iterate over subscriptions by name
 ---@param uri  uri
 ---@param name string
----@return fun():any,nil|string
+---@return fun():any, uri
 function mt:each(uri, name)
     uri = uri or '<fallback>'
     local nameCollect = self.collect[name]

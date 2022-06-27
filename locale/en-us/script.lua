@@ -102,8 +102,8 @@ DIAG_CIRCLE_DOC_CLASS                 =
 'Circularly inherited classes.'
 DIAG_DOC_FIELD_NO_CLASS               =
 'The field must be defined after the class.'
-DIAG_DUPLICATE_DOC_CLASS              =
-'Duplicate defined class `{}`.'
+DIAG_DUPLICATE_DOC_ALIAS              =
+'Duplicate defined alias `{}`.'
 DIAG_DUPLICATE_DOC_FIELD              =
 'Duplicate defined fields `{}`.'
 DIAG_DUPLICATE_DOC_PARAM              =
@@ -116,6 +116,18 @@ DIAG_UNDEFINED_DOC_PARAM              =
 'Undefined param `{}`.'
 DIAG_UNKNOWN_DIAG_CODE                =
 'Unknown diagnostic code `{}`.'
+DIAG_CAST_LOCAL_TYPE                  =
+'This variable has explicitly defined as `{def}`. Cannot convert its type to `{ref}`.'
+DIAG_CAST_FIELD_TYPE                  =
+'This field has explicitly defined as `{def}`. Cannot convert its type to `{ref}`.'
+DIAG_ASSIGN_TYPE_MISMATCH             =
+'Cannot assign `{ref}` to `{def}`.'
+DIAG_PARAM_TYPE_MISMATCH              =
+'Cannot assign `{ref}` to parameter `{def}`.'
+DIAG_UNKNOWN_CAST_VARIABLE            =
+'Unknown type conversion variable `{}`.'
+DIAG_CAST_TYPE_MISMATCH               =
+'Cannot convert `{ref}` to `{def}`。'
 
 MWS_NOT_SUPPORT         =
 '{} does not support multi workspace for now, I may need to restart to support the new workspace ...'
@@ -712,7 +724,7 @@ function getTags(item) end
 ]=]
 LUADOC_DESC_FIELD =
 [=[
-Decalare a field in a class/table. This allows you to provide more in-depth
+Declare a field in a class/table. This allows you to provide more in-depth
 documentation for a table.
 
 ## Syntax
@@ -920,7 +932,7 @@ local unused = "hello world"
 ]=]
 LUADOC_DESC_MODULE =
 [=[
-Provides the semantics of `reqire`.
+Provides the semantics of `require`.
 
 ## Syntax
 `---@module <'module_name'>`
@@ -961,8 +973,6 @@ LUADOC_DESC_CAST =
 [=[
 Allows type casting (type conversion).
 
-⚠️ **Not Finalized**
-
 ## Syntax
 `@cast <variable> <[+|-]type>[, <[+|-]type>]...`
 
@@ -992,5 +1002,5 @@ local x --> string|table
 print(x) --> table
 ```
 ---
-[View Proposal](https://github.com/sumneko/lua-language-server/issues/1030)
+[View Wiki](https://github.com/sumneko/lua-language-server/wiki/EmmyLua-Annotations#cast)
 ]=]

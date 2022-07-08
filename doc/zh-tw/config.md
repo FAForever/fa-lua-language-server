@@ -186,6 +186,102 @@ true
 Array<string>
 ```
 
+## enum
+
+* ``"not-yieldable"``
+* ``"redundant-parameter"``
+* ``"break-outside"``
+* ``"undefined-doc-class"``
+* ``"unknown-symbol"``
+* ``"miss-method"``
+* ``"err-nonstandard-symbol"``
+* ``"unknown-attribute"``
+* ``"unexpect-efunc-name"``
+* ``"different-requires"``
+* ``"miss-end"``
+* ``"await-in-sync"``
+* ``"args-after-dots"``
+* ``"err-eq-as-assign"``
+* ``"newfield-call"``
+* ``"err-assign-as-eq"``
+* ``"undefined-doc-param"``
+* ``"param-type-mismatch"``
+* ``"global-in-nil-env"``
+* ``"missing-parameter"``
+* ``"miss-sep-in-table"``
+* ``"unknown-cast-variable"``
+* ``"miss-loop-min"``
+* ``"malformed-number"``
+* ``"err-do-as-then"``
+* ``"spell-check"``
+* ``"undefined-env-child"``
+* ``"missing-return-value"``
+* ``"discard-returns"``
+* ``"redundant-return"``
+* ``"miss-esc-x"``
+* ``"redundant-value"``
+* ``"duplicate-doc-alias"``
+* ``"doc-field-no-class"``
+* ``"no-visible-label"``
+* ``"miss-exp"``
+* ``"miss-loop-max"``
+* ``"miss-name"``
+* ``"empty-block"``
+* ``"unused-local"``
+* ``"err-then-as-do"``
+* ``"duplicate-doc-field"``
+* ``"redefined-label"``
+* ``"exp-in-action"``
+* ``"set-const"``
+* ``"circle-doc-class"``
+* ``"unexpect-lfunc-name"``
+* ``"unsupport-symbol"``
+* ``"unused-label"``
+* ``"action-after-return"``
+* ``"unexpect-dots"``
+* ``"newline-call"``
+* ``"jump-local-scope"``
+* ``"close-non-object"``
+* ``"miss-field"``
+* ``"count-down-loop"``
+* ``"cast-type-mismatch"``
+* ``"duplicate-index"``
+* ``"unexpect-symbol"``
+* ``"block-after-else"``
+* ``"unicode-name"``
+* ``"miss-exponent"``
+* ``"err-esc"``
+* ``"redundant-return-value"``
+* ``"unbalanced-assignments"``
+* ``"err-c-long-comment"``
+* ``"undefined-doc-name"``
+* ``"ambiguity-1"``
+* ``"trailing-space"``
+* ``"deprecated"``
+* ``"codestyle-check"``
+* ``"missing-return"``
+* ``"undefined-global"``
+* ``"unused-function"``
+* ``"code-after-break"``
+* ``"assign-type-mismatch"``
+* ``"local-limit"``
+* ``"cast-local-type"``
+* ``"need-check-nil"``
+* ``"keyword"``
+* ``"unknown-diag-code"``
+* ``"unused-vararg"``
+* ``"err-comment-prefix"``
+* ``"lowercase-global"``
+* ``"return-type-mismatch"``
+* ``"duplicate-set-field"``
+* ``"redefined-local"``
+* ``"no-unknown"``
+* ``"duplicate-doc-param"``
+* ``"index-in-func-name"``
+* ``"miss-symbol"``
+* ``"undefined-field"``
+* ``"miss-space-between"``
+
 ## default
 
 ```jsonc
@@ -333,12 +429,16 @@ object<string, string>
     * cast-type-mismatch
     * need-check-nil
     * param-type-mismatch
+    * return-type-mismatch
     * undefined-field
     */
     "type-check": "Fallback",
     /*
     * missing-parameter
+    * missing-return
+    * missing-return-value
     * redundant-parameter
+    * redundant-return-value
     * redundant-value
     * unbalanced-assignments
     */
@@ -446,12 +546,16 @@ object<string, string>
     * cast-type-mismatch
     * need-check-nil
     * param-type-mismatch
+    * return-type-mismatch
     * undefined-field
     */
     "type-check": "Fallback",
     /*
     * missing-parameter
+    * missing-return
+    * missing-return-value
     * redundant-parameter
+    * redundant-return-value
     * redundant-value
     * unbalanced-assignments
     */
@@ -580,6 +684,8 @@ object<string, string>
     */
     "lowercase-global": "Any",
     "missing-parameter": "Any",
+    "missing-return": "Any",
+    "missing-return-value": "Any",
     "need-check-nil": "Opened",
     /*
     在字面常數表中，2行程式碼之間缺少分隔符，在語法上被解析為了一次索引操作
@@ -601,10 +707,12 @@ object<string, string>
     */
     "redundant-parameter": "Any",
     "redundant-return": "Opened",
+    "redundant-return-value": "Any",
     /*
     賦值操作時，值的數量比被賦值的對象多
     */
     "redundant-value": "Any",
+    "return-type-mismatch": "Opened",
     "spell-check": "None",
     /*
     後置空格
@@ -709,6 +817,8 @@ object<string, string>
     */
     "lowercase-global": "Information",
     "missing-parameter": "Warning",
+    "missing-return": "Warning",
+    "missing-return-value": "Warning",
     "need-check-nil": "Warning",
     /*
     在字面常數表中，2行程式碼之間缺少分隔符，在語法上被解析為了一次索引操作
@@ -730,10 +840,12 @@ object<string, string>
     */
     "redundant-parameter": "Warning",
     "redundant-return": "Hint",
+    "redundant-return-value": "Warning",
     /*
     賦值操作時，值的數量比被賦值的對象多
     */
     "redundant-value": "Warning",
+    "return-type-mismatch": "Warning",
     "spell-check": "Information",
     /*
     後置空格
@@ -929,6 +1041,28 @@ boolean
 
 ```jsonc
 true
+```
+
+# hint.semicolon
+
+若陳述式尾部沒有分號，則顯示虛擬分號。
+
+## type
+
+```ts
+string
+```
+
+## enum
+
+* ``"All"``: 所有陳述式都顯示虛擬分號。
+* ``"SameLine"``: 兩個陳述式在同一行時，在它們之間顯示分號。
+* ``"Disable"``: 停用虛擬分號。
+
+## default
+
+```jsonc
+"SameLine"
 ```
 
 # hint.setType
@@ -1177,6 +1311,13 @@ Array<string>
 * ``"-="``
 * ``"*="``
 * ``"/="``
+* ``"%="``
+* ``"^="``
+* ``"//="``
+* ``"|="``
+* ``"&="``
+* ``"<<="``
+* ``">>="``
 * ``"||"``
 * ``"&&"``
 * ``"!"``
@@ -1419,7 +1560,26 @@ null
 
 # type.castNumberToInteger
 
-Allowed to assign the `number` type to the `integer` type.
+允許將 `number` 類型賦值給 `integer` 類型。
+
+## type
+
+```ts
+boolean
+```
+
+## default
+
+```jsonc
+false
+```
+
+# type.weakNilCheck
+
+When checking the type of union type, ignore the `nil` in it.
+
+When this setting is `false`, the `number|nil` type cannot be assigned to the `number` type. It can be with `true`.
+
 
 ## type
 
@@ -1435,9 +1595,9 @@ false
 
 # type.weakUnionCheck
 
-Once one subtype of a union type meets the condition, the union type also meets the condition.
+同位類型中只要有一個子類型滿足條件，則同位類型也滿足條件。
 
-When this setting is `false`, the `number|boolean` type cannot be assigned to the `number` type. It can be with `true`.
+此設定為 `false` 時，`number|boolean` 類型無法賦給 `number` 類型；為 `true` 時則可以。
 
 
 ## type

@@ -885,6 +885,7 @@ TEST [[
 ---@param v T
 ---@param message any
 ---@return T
+---@return any message
 function assert(v, message)
     return v, message
 end
@@ -1727,11 +1728,10 @@ function F()
 end
 ]]
 
-do return end
 TEST [[
----@return number
+---@return ...
 function F()
-    X = 1<!!>
+    return
 end
 ]]
 
@@ -1741,4 +1741,164 @@ function F()
     return 1, 1, <!1!>
 end
 ]]
+
+TEST [[
+---@return number, number?
+function F()
+    return 1, 1, <!1!>, <!2!>, <!3!>
+end
+]]
+
+TEST [[
+---@return number, number
+local function r2() end
+
+---@return number, number?
+function F()
+    return 1, <!r2()!>
+end
+]]
+
+TEST [[
+---@return number
+function F()
+    X = 1<!!>
+end
+]]
+
+TEST [[
+local A
+---@return number
+function F()
+    if A then
+        return 1
+    end<!!>
+end
+]]
+
+TEST [[
+local A, B
+---@return number
+function F()
+    if A then
+        return 1
+    elseif B then
+        return 2
+    end<!!>
+end
+]]
+
+TEST [[
+local A, B
+---@return number
+function F()
+    if A then
+        return 1
+    elseif B then
+        return 2
+    else
+        return 3
+    end
+end
+]]
+
+TEST [[
+local A, B
+---@return number
+function F()
+    if A then
+    elseif B then
+        return 2
+    else
+        return 3
+    end<!!>
+end
+]]
+
+TEST [[
+---@return any
+function F()
+    X = 1
+end
+]]
+
+TEST [[
+---@return any, number
+function F()
+    X = 1<!!>
+end
+]]
+
+TEST [[
+---@return number, any
+function F()
+    X = 1<!!>
+end
+]]
+
+TEST [[
+---@return any, any
+function F()
+    X = 1
+end
+]]
+
+TEST [[
+local A
+---@return number
+function F()
+    for _ = 1, 10 do
+        if A then
+            return 1
+        end
+    end
+    error('should not be here')
+end
+]]
+
+TEST [[
+local A
+---@return number
+function F()
+    while true do
+        if A then
+            return 1
+        end
+    end
+end
+]]
+
+TEST [[
+local A
+---@return number
+function F()
+    while A do
+        if A then
+            return 1
+        end
+    end<!!>
+end
+]]
+
+TEST [[
+local A
+---@return number
+function F()
+    while A do
+        if A then
+            return 1
+        else
+            return 2
+        end
+    end
+end
+]]
+
+TEST [[
+---@return number?
+function F()
+
+end
+]]
+
 util.arrayRemove(disables, 'redundant-return')

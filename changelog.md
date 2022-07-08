@@ -1,6 +1,37 @@
 # changelog
 
+## 3.4.2
+`2022-7-6`
+* `CHG` diagnostic: `type-check` ignores `nil` in `getfield`
+* `CHG` diagnostic: `---@diagnostic disable: <ERR_NAME>` can suppress syntax errors
+* `CHG` completion: `completion.callSnippet` no longer generate parameter types
+* `CHG` hover: show `---@type {x: number, y: number}` as detail instead of `table`
+* `CHG` dose not infer as `nil` by `t.field = nil`
+* `FIX` [#1278](https://github.com/sumneko/lua-language-server/issues/1278)
+* `FIX` [#1288](https://github.com/sumneko/lua-language-server/issues/1288)
+
+## 3.4.1
+`2022-7-5`
+* `NEW` settings:
+  * `type.weakNilCheck`
+* `CHG` allow type contravariance for `setmetatable` when initializing a class
+  ```lua
+  ---@class A
+  local a = {}
+
+  ---@class B: A
+  local b = setmetatable({}, { __index = a }) -- OK!
+  ```
+* `FIX` [#1256](https://github.com/sumneko/lua-language-server/issues/1256)
+* `FIX` [#1257](https://github.com/sumneko/lua-language-server/issues/1257)
+* `FIX` [#1267](https://github.com/sumneko/lua-language-server/issues/1267)
+* `FIX` [#1269](https://github.com/sumneko/lua-language-server/issues/1269)
+* `FIX` [#1273](https://github.com/sumneko/lua-language-server/issues/1273)
+* `FIX` [#1275](https://github.com/sumneko/lua-language-server/issues/1275)
+* `FIX` [#1279](https://github.com/sumneko/lua-language-server/issues/1279)
+
 ## 3.4.0
+`2022-6-29`
 * `NEW` diagnostics:
   * `cast-local-type`
   * `assign-type-mismatch`
@@ -8,6 +39,9 @@
   * `unknown-cast-variable`
   * `cast-type-mismatch`
   * `missing-return-value`
+  * `redundant-return-value`
+  * `missing-return`
+  * `return-type-mismatch`
 * `NEW` settings:
   * `diagnostics.groupSeverity`
   * `diagnostics.groupFileStatus`
@@ -44,6 +78,9 @@
 * `FIX` sometimes workspace diagnostics are not triggered
 * `FIX` [#1228](https://github.com/sumneko/lua-language-server/issues/1228)
 * `FIX` [#1229](https://github.com/sumneko/lua-language-server/issues/1229)
+* `FIX` [#1242](https://github.com/sumneko/lua-language-server/issues/1242)
+* `FIX` [#1243](https://github.com/sumneko/lua-language-server/issues/1243)
+* `FIX` [#1249](https://github.com/sumneko/lua-language-server/issues/1249)
 
 ## 3.3.1
 `2022-6-17`

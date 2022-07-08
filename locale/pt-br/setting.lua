@@ -236,6 +236,14 @@ config.hint.arrayIndex.Disable           = -- TODO: need translate!
 'Disable hints of array index.'
 config.hint.await                        = -- TODO: need translate!
 'If the called function is marked `---@async`, prompt `await` at the call.'
+config.hint.semicolon                    = -- TODO: need translate!
+'If there is no semicolon at the end of the statement, display a virtual semicolon.'
+config.hint.semicolon.All                = -- TODO: need translate!
+'All statements display virtual semicolons.'
+config.hint.semicolon.SameLine            = -- TODO: need translate!
+'When two statements are on the same line, display a semicolon between them.'
+config.hint.semicolon.Disable            = -- TODO: need translate!
+'Disable virtual semicolons.'
 config.format.enable                     = -- TODO: need translate!
 'Enable code formatter.'
 config.format.defaultConfig              = -- TODO: need translate!
@@ -266,6 +274,12 @@ config.type.weakUnionCheck               = -- TODO: need translate!
 Once one subtype of a union type meets the condition, the union type also meets the condition.
 
 When this setting is `false`, the `number|boolean` type cannot be assigned to the `number` type. It can be with `true`.
+]]
+config.type.weakNilCheck                 = -- TODO: need translate!
+[[
+When checking the type of union type, ignore the `nil` in it.
+
+When this setting is `false`, the `number|nil` type cannot be assigned to the `number` type. It can be with `true`.
 ]]
 config.diagnostics['unused-local']          = -- TODO: need translate!
 '未使用的局部变量'

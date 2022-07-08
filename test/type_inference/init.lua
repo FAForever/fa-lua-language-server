@@ -515,12 +515,12 @@ TEST 'fun(a: string, b: any, ...any)' [[
 local <?x?>
 ]]
 
-TEST 'fun(a: string, b: any, c?: boolean, ...any):c, d?, ...' [[
+TEST 'fun(a: string, b: any, c?: boolean, ...any):c, d?, ...unknown' [[
 ---@type fun(a: string, b, c?: boolean, ...):c, d?, ...
 local <?x?>
 ]]
 
-TEST 'table' [[
+TEST '{ [string]: string }' [[
 ---@type { [string]: string }
 local <?x?>
 ]]
@@ -1857,6 +1857,15 @@ if xxx and x then
 end
 ]]
 
+TEST 'integer' [[
+---@type integer?
+local x
+
+if x and not mark[x] then
+    print(<?x?>)
+end
+]]
+
 TEST 'integer?' [[
 ---@type integer?
 local x
@@ -2430,14 +2439,14 @@ TEST 'table' [[
 local <?x?>
 ]]
 
-TEST 'table' [[
+TEST '{ name: boolean }' [[
 ---@alias tp {name: boolean}
 
 ---@type tp
 local <?x?>
 ]]
 
-TEST 'boolean|table' [[
+TEST 'boolean|{ name: boolean }' [[
 ---@alias tp boolean | {name: boolean}
 
 ---@type tp
@@ -3148,4 +3157,237 @@ TEST 'A' [[
 
 ---@type A
 local <?s?> = ''
+]]
+
+TEST 'number' [[
+---@return number
+local function f() end
+local x, <?y?> = 1, f()
+]]
+
+TEST 'boolean' [[
+---@return number, boolean
+local function f() end
+local x, y, <?z?> = 1, f()
+]]
+
+TEST 'number' [[
+---@return number, boolean
+local function f() end
+local x, y, <?z?> = 1, 2, f()
+]]
+
+TEST 'function' [[
+local f
+
+print(<?f?>)
+
+function f() end
+]]
+
+TEST 'number' [[
+---@type number|nil
+local n
+
+local t = {
+    x = n and <?n?>,
+}
+]]
+
+TEST 'table' [[
+---@type table?
+local n
+
+if not n or not <?n?>.x then
+end
+]]
+
+TEST 'table' [[
+---@type table?
+local n
+
+if not n or not <?n?>[1] then
+end
+]]
+
+TEST 'number' [[
+---@type number|false
+local n
+
+---@cast n -false
+
+print(<?n?>)
+]]
+
+TEST 'table' [[
+---@type number|table
+local n
+
+if  n
+---@cast n table
+and <?n?>.type == 'xxx' then
+end
+]]
+
+TEST 'integer' [[
+---@type integer?
+local n
+if true then
+    n = 0
+end
+local <?x?> = n or 0
+]]
+
+TEST 'number' [=[
+local <?x?> = F()--[[@as number]]
+]=]
+
+TEST 'number' [=[
+local function f()
+    return F()--[[@as number]]
+end
+
+local <?x?> = f()
+]=]
+
+TEST 'number' [=[
+local <?x?> = X --[[@as number]]
+]=]
+
+TEST 'number' [[
+---@return number?, number?
+local function f() end
+
+for <?x?>, y in f do
+end
+]]
+
+TEST 'number' [[
+---@return number?, number?
+local function f() end
+
+for x, <?y?> in f do
+end
+]]
+
+TEST 'number|nil' [[
+---@type table|nil
+local a
+
+---@type number|nil
+local b
+
+local <?c?> = a and b
+]]
+
+TEST 'number|table|nil' [[
+---@type table|nil
+local a
+
+---@type number|nil
+local b
+
+local <?c?> = a or b
+]]
+
+TEST 'number|table|nil' [[
+---@type table|nil
+local a
+
+---@type number|nil
+local b
+
+local c = a and b
+local <?d?> = a or b
+]]
+
+TEST 'number' [[
+local x
+
+---@return number
+local function f()
+end
+
+x = f()
+
+print(<?x?>)
+]]
+
+TEST 'number' [[
+local x
+
+---@return number
+local function f()
+end
+
+_, x = pcall(f)
+
+print(<?x?>)
+]]
+
+TEST 'string' [[
+---@type table<string|number, string>
+local t
+
+---@type number
+local n
+---@type string
+local s
+
+local <?test?>  = t[n] 
+local test2 = t[s] --test and test2 are unknow
+]]
+
+TEST 'string' [[
+---@type table<string|number, string>
+local t
+
+---@type number
+local n
+---@type string
+local s
+
+local test  = t[n] 
+local <?test2?> = t[s] --test and test2 are unknow
+]]
+
+TEST 'table<number, boolean>' [[
+---@type table<number, boolean>
+local t
+
+<?t?> = {}
+]]
+
+TEST 'integer' [[
+---@type integer[]|A
+local t
+
+local <?x?> = t[1]
+]]
+
+TEST 'integer' [[
+---@type integer
+---@diagnostic disable
+local <?t?>
+]]
+
+TEST 'A' [[
+---@class A
+---@diagnostic disable
+local <?t?>
+]]
+
+TEST '{ [string]: number, [true]: string, [1]: boolean, tag: integer }' [[
+---@type {[string]: number, [true]: string, [1]: boolean, tag: integer}
+local <?t?>
+]]
+
+TEST 'unknown' [[
+local mt = {}
+mt.<?x?> = nil
+]]
+
+TEST 'unknown' [[
+mt = {}
+mt.<?x?> = nil
 ]]

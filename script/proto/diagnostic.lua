@@ -59,6 +59,8 @@ m.register {
     'redundant-parameter',
     'missing-parameter',
     'missing-return-value',
+    'redundant-return-value',
+    'missing-return',
 } {
     group    = 'unbalanced',
     severity = 'Warning',
@@ -72,6 +74,7 @@ m.register {
     'assign-type-mismatch',
     'param-type-mismatch',
     'cast-type-mismatch',
+    'return-type-mismatch',
 } {
     group    = 'type-check',
     severity = 'Warning',
@@ -222,7 +225,7 @@ end
 
 ---@param name string
 ---@return string[]
-m.getGroups = util.catchReturn(function (name)
+m.getGroups = util.cacheReturn(function (name)
     local groups = {}
     for groupName, nameMap in pairs(m.diagnosticGroups) do
         if nameMap[name] then
@@ -232,5 +235,32 @@ m.getGroups = util.catchReturn(function (name)
     table.sort(groups)
     return groups
 end)
+
+---@return table<string, true>
+function m.getDiagAndErrNameMap()
+    if not m._diagAndErrNames then
+        local names = {}
+        for name in pairs(m.getDefaultSeverity()) do
+            names[name] = true
+        end
+        local path = package.searchpath('parser.compile', package.path)
+        if path then
+            local f = io.open(path)
+            if f then
+                for line in f:lines() do
+                    local name = line:match([=[type%s*=%s*['"](%u[%u_]+%u)['"]]=])
+                    if name then
+                        local id = name:lower():gsub('_', '-')
+                        names[id] = true
+                    end
+                end
+                f:close()
+            end
+        end
+        table.sort(names)
+        m._diagAndErrNames = names
+    end
+    return m._diagAndErrNames
+end
 
 return m

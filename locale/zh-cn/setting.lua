@@ -235,6 +235,14 @@ config.hint.arrayIndex.Disable           =
 '禁用数组索引提示。'
 config.hint.await                        =
 '如果调用的函数被标记为了 `---@async` ，则在调用处提示 `await` 。'
+config.hint.semicolon                    =
+'若语句尾部没有分号，则显示虚拟分号。'
+config.hint.semicolon.All                =
+'所有语句都显示虚拟分号。'
+config.hint.semicolon.SameLine           =
+'2个语句在同一行时，在它们之间显示分号。'
+config.hint.semicolon.Disable            =
+'禁用虚拟分号。'
 config.format.enable                     =
 '启用代码格式化程序。'
 config.format.defaultConfig              =
@@ -265,6 +273,12 @@ config.type.weakUnionCheck               =
 联合类型中只要有一个子类型满足条件，则联合类型也满足条件。
 
 此设置为 `false` 时，`number|boolean` 类型无法赋给 `number` 类型；为 `true` 时则可以。
+]]
+config.type.weakNilCheck                 =
+[[
+对联合类型进行类型检查时，忽略其中的 `nil`。
+
+此设置为 `false` 时，`numer|nil` 类型无法赋给 `number` 类型；为 `true` 是则可以。
 ]]
 config.diagnostics['unused-local']          =
 '未使用的局部变量'

@@ -2042,6 +2042,16 @@ function f(...boolean)
 ]]
 
 TEST [[
+---@param ... boolean
+---@return ...
+local function <?f?>(...) end
+]]
+[[
+function f(...boolean)
+  -> ...unknown
+]]
+
+TEST [[
 ---@type fun():x: number
 local <?f?>
 ]]
@@ -2063,4 +2073,21 @@ local <?f?>
 ]]
 [[
 local f: fun():(x: number, y: boolean)
+]]
+
+TEST [[
+---@class MyClass
+local MyClass = {
+    a = 1
+}
+
+function MyClass:Test()
+    <?self?>
+end
+]]
+[[
+(self) self: MyClass {
+    Test: function,
+    a: integer = 1,
+}
 ]]

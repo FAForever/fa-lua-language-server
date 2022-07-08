@@ -4,11 +4,14 @@ local vm       = require 'vm.vm'
 
 ---@param source parser.object?
 ---@return boolean|nil
-function vm.test(source)
+function vm.testCondition(source)
     if not source then
         return nil
     end
     local node = vm.compileNode(source)
+    if node.optional then
+        return nil
+    end
     local hasTrue, hasFalse
     for n in node:eachObject() do
         if n.type == 'boolean'
@@ -19,24 +22,16 @@ function vm.test(source)
             if n[1] == false then
                 hasFalse = true
             end
-        end
-        if n.type == 'global' and n.cate == 'type' then
-            if n.name == 'true' then
-                hasTrue = true
-            end
+        elseif n.type == 'global' and n.cate == 'type' then
             if n.name == 'false'
             or n.name == 'nil' then
                 hasFalse = true
+            else
+                hasTrue = true
             end
-        end
-        if n.type == 'nil' then
+        elseif n.type == 'nil' then
             hasFalse = true
-        end
-        if n.type == 'string'
-        or n.type == 'number'
-        or n.type == 'integer'
-        or n.type == 'table'
-        or n.type == 'function' then
+        elseif guide.isLiteral(n) then
             hasTrue = true
         end
     end
@@ -51,7 +46,7 @@ function vm.test(source)
 end
 
 ---@param v vm.node.object
----@return string?
+---@return string|false
 local function getUnique(v)
     if v.type == 'boolean' then
         if v[1] == nil then
@@ -79,7 +74,7 @@ local function getUnique(v)
         ---@cast v parser.object
         return ('func:%s@%d'):format(guide.getUri(v), v.start)
     end
-    return nil
+    return false
 end
 
 ---@param a parser.object?

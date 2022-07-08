@@ -266,10 +266,9 @@ local function getPosition(offset, leftOrRight)
     end
 end
 
----@return string          word
----@return parser.position startPosition
----@return parser.position finishPosition
----@return integer         newOffset
+---@return string?          word
+---@return parser.position? startPosition
+---@return parser.position? finishPosition
 local function peekWord()
     local word = Tokens[Index + 1]
     if not word then
@@ -613,7 +612,14 @@ local function expectAssign(isAction)
         if token == '+='
         or token == '-='
         or token == '*='
-        or token == '/=' then
+        or token == '/='
+        or token == '%='
+        or token == '^='
+        or token == '//='
+        or token == '|='
+        or token == '&='
+        or token == '>>='
+        or token == '<<=' then
             if not State.options.nonstandardSymbol[token] then
                 unknownSymbol()
             end
@@ -2611,9 +2617,9 @@ local function skipSeps()
     end
 end
 
----@return parser.object   first
----@return parser.object   second
----@return parser.object[] rest
+---@return parser.object?   first
+---@return parser.object?   second
+---@return parser.object[]? rest
 local function parseSetValues()
     skipSpace()
     local first = parseExp()
@@ -2668,18 +2674,18 @@ function pushActionIntoCurrentChunk(action)
     end
 end
 
----@return parser.object   second
----@return parser.object[] rest
+---@return parser.object?   second
+---@return parser.object[]? rest
 local function parseVarTails(parser, isLocal)
     if Tokens[Index + 1] ~= ',' then
-        return
+        return nil
     end
     Index = Index + 2
     skipSpace()
     local second = parser(true)
     if not second then
         missName()
-        return
+        return nil
     end
     if isLocal then
         createLocal(second, parseLocalAttrs())
@@ -2788,11 +2794,15 @@ function parseMultiVars(n1, parser, isLocal)
             missExp()
         end
     end
-    bindValue(n1, v1, 1, nil, isLocal, isSet)
+    local index = 1
+    bindValue(n1, v1, index, nil, isLocal, isSet)
     local lastValue = v1
     if n2 then
         max = 2
-        bindValue(n2, v2, 2, lastValue, isLocal, isSet)
+        if not v2 then
+            index = 2
+        end
+        bindValue(n2, v2, index, lastValue, isLocal, isSet)
         lastValue = v2 or lastValue
         pushActionIntoCurrentChunk(n2)
     end
@@ -2801,7 +2811,10 @@ function parseMultiVars(n1, parser, isLocal)
             local n = nrest[i]
             local v = vrest and vrest[i]
             max = i + 2
-            bindValue(n, v, max, lastValue, isLocal, isSet)
+            if not v then
+                index = index + 1
+            end
+            bindValue(n, v, index, lastValue, isLocal, isSet)
             lastValue = v or lastValue
             pushActionIntoCurrentChunk(n)
         end
@@ -2847,7 +2860,8 @@ local function compileExpAsAction(exp)
                 local block = Chunk[i]
                 if block.type == 'ifblock'
                 or block.type == 'elseifblock'
-                or block.type == 'else' then
+                or block.type == 'elseblock'
+                or block.type == 'function' then
                     block.hasError = true
                     break
                 end
@@ -3000,7 +3014,8 @@ local function parseReturn()
         local block = Chunk[i]
         if block.type == 'ifblock'
         or block.type == 'elseifblock'
-        or block.type == 'else' then
+        or block.type == 'elseblock'
+        or block.type == 'function' then
             block.hasReturn = true
             break
         end

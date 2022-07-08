@@ -61,7 +61,8 @@ function m.getVisiblePath(suri, path)
     and not scp:isLinkedUri(uri) then
         return {}
     end
-    local libraryPath = furi.decode(files.getLibraryUri(suri, uri))
+    local libUri = files.getLibraryUri(suri, uri)
+    local libraryPath = libUri and furi.decode(libUri)
     local cache = scp:get('visiblePath') or scp:set('visiblePath', {})
     local result = cache[path]
     if not result then
@@ -123,14 +124,6 @@ function m.findUrisByRequirePath(suri, path)
     tracy.ZoneBeginN('findUrisByRequirePath')
     local results = {}
     local searchers = {}
-    for uri in files.eachDll() do
-        local opens = files.getDllOpens(uri) or {}
-        for _, open in ipairs(opens) do
-            if open == fspath then
-                results[#results+1] = uri
-            end
-        end
-    end
 
     ---@type collector
     local clt = scope.getScope(suri):get('requireName')
@@ -145,6 +138,15 @@ function m.findUrisByRequirePath(suri, path)
                         searchers[uri] = info.searcher
                     end
                 end
+            end
+        end
+    end
+
+    for uri in files.eachDll() do
+        local opens = files.getDllOpens(uri) or {}
+        for _, open in ipairs(opens) do
+            if open == fspath then
+                results[#results+1] = uri
             end
         end
     end

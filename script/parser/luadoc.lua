@@ -5,7 +5,11 @@ local compile    = require 'parser.compile'
 local util       = require 'utility'
 
 local TokenTypes, TokenStarts, TokenFinishs, TokenContents, TokenMarks
-local Ci, Offset, pushWarning, NextComment, Lines
+---@type integer
+local Ci
+---@type integer
+local Offset
+local pushWarning, NextComment, Lines
 local parseType, parseTypeUnit
 ---@type any
 local Parser = re.compile([[
@@ -138,6 +142,11 @@ Symbol              <-  ({} {
 ---@field signs parser.object[]
 ---@field originalComment parser.object
 ---@field as? parser.object
+---@field touch? integer
+---@field module? string
+---@field async? boolean
+---@field versions? table[]
+---@field names? parser.object[]
 
 local function trim(str)
     return str:match '^%s*(%S+)%s*$'
@@ -159,13 +168,13 @@ local function peekToken()
     return TokenTypes[Ci+1], TokenContents[Ci+1]
 end
 
----@return string tokenType
----@return string tokenContent
+---@return string? tokenType
+---@return string? tokenContent
 local function nextToken()
     Ci = Ci + 1
     if not TokenTypes[Ci] then
         Ci = Ci - 1
-        return nil
+        return nil, nil
     end
     return TokenTypes[Ci], TokenContents[Ci]
 end
@@ -452,6 +461,10 @@ local function  parseTypeUnitFunction(parent)
                     name = returnName
                     return true
                 end
+                if returnName[1] == '...' then
+                    name = returnName
+                    return false
+                end
                 return false
             end)
             local rtn = parseType(typeUnit)
@@ -648,12 +661,15 @@ function parseTypeUnit(parent)
                 or parseCode(parent)
                 or parseInteger(parent)
                 or parseBoolean(parent)
-                or parseDots('doc.type.name', parent)
                 or parseParen(parent)
     if not result then
         result = parseName('doc.type.name', parent)
+              or parseDots('doc.type.name', parent)
         if not result then
             return nil
+        end
+        if result[1] == '...' then
+            result[1] = 'unknown'
         end
     end
     while true do
@@ -918,6 +934,10 @@ local docSwitch = util.switch()
             returns = {},
         }
         while true do
+            local dots = parseDots('doc.return.name')
+            if dots then
+                Ci = Ci - 1
+            end
             local docType = parseType(result)
             if not docType then
                 break
@@ -929,8 +949,13 @@ local docSwitch = util.switch()
                 nextToken()
                 docType.optional = true
             end
-            docType.name = parseName('doc.return.name', docType)
-                        or parseDots('doc.return.name', docType)
+            if dots then
+                docType.name = dots
+                dots.parent  = docType
+            else
+                docType.name = parseName('doc.return.name', docType)
+                            or parseDots('doc.return.name', docType)
+            end
             result.returns[#result.returns+1] = docType
             if not checkToken('symbol', ',', 1) then
                 break
@@ -1441,6 +1466,9 @@ local function isContinuedDoc(lastDoc, nextDoc)
     if not nextDoc then
         return false
     end
+    if nextDoc.type == 'doc.diagnostic' then
+        return true
+    end
     if lastDoc.type == 'doc.type'
     or lastDoc.type == 'doc.module' then
         return false
@@ -1667,6 +1695,22 @@ local function bindDocs(state)
     end
 end
 
+local function findTouch(state, doc)
+    local text = state.lua
+    local pos  = guide.positionToOffset(state, doc.originalComment.start)
+    for i = pos - 2, 1, -1 do
+        local c = text:sub(i, i)
+        if c == '\r'
+        or c == '\n' then
+            break
+        elseif c ~= ' '
+        and    c ~= '\t' then
+            doc.touch = guide.offsetToPosition(state, i)
+            break
+        end
+    end
+end
+
 return function (state)
     local ast = state.ast
     local comments = state.comms
@@ -1710,6 +1754,9 @@ return function (state)
                 ast.finish = doc.finish
             end
             doc.originalComment = comment
+            if comment.type == 'comment.long' then
+                findTouch(state, doc)
+            end
         end
     end
 

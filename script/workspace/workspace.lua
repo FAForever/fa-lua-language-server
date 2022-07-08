@@ -154,7 +154,7 @@ function m.getNativeMatcher(scp)
     end
 
     local matcher = glob.gitignore(pattern, {
-        root       = furi.decode(scp.uri),
+        root       = scp.uri and furi.decode(scp.uri),
         ignoreCase = platform.OS == 'Windows',
     }, globInteferFace)
 
@@ -354,9 +354,6 @@ end
 ---@param path string
 ---@return string
 function m.normalize(path)
-    if not path then
-        return nil
-    end
     path = path:gsub('%$%{(.-)%}', function (key)
         if key == '3rd' then
             return (ROOT / 'meta' / '3rd'):string()
@@ -379,7 +376,7 @@ function m.normalize(path)
     return path
 end
 
----@return string
+---@return string?
 function m.getAbsolutePath(folderUri, path)
     if not path or path == '' then
         return nil
@@ -398,6 +395,7 @@ end
 ---@param uriOrPath uri|string
 ---@param startWithSlash boolean|nil
 ---@return string
+---@return boolean suc
 function m.getRelativePath(uriOrPath, startWithSlash)
     local path, uri
     if uriOrPath:sub(1, 5) == 'file:' then
@@ -524,6 +522,7 @@ end
 config.watch(function (uri, key, value, oldValue)
     if key:find '^Lua.runtime'
     or key:find '^Lua.workspace'
+    or key:find '^Lua.type'
     or key:find '^files' then
         if value ~= oldValue then
             m.reload(scope.getScope(uri))

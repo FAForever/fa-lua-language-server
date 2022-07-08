@@ -275,7 +275,7 @@ local function sortTable(tbl)
 end
 
 --- 创建一个有序表
----@param tbl table {optional = 'self'}
+---@param tbl? table
 ---@return table
 function m.container(tbl)
     return sortTable(tbl)
@@ -570,7 +570,7 @@ end
 ---遍历文本的每一行
 ---@param text string
 ---@param keepNL? boolean # 保留换行符
----@return fun(text:string):string, integer
+---@return fun():string, integer
 function m.eachLine(text, keepNL)
     local offset = 1
     local lineCount = 0
@@ -835,7 +835,7 @@ m.MODE_KV = { __mode = 'kv' }
 ---@generic T: fun(param: any):any
 ---@param func T
 ---@return T
-function m.catchReturn(func)
+function m.cacheReturn(func)
     local cache = {}
     return function (param)
         if cache[param] == nil then

@@ -18,7 +18,7 @@ end
 
 ---@param func parser.object
 ---@return integer min
----@return integer max
+---@return number  max
 function vm.countParamsOfFunction(func)
     local min = 0
     local max = 0
@@ -60,7 +60,7 @@ end
 
 ---@param node vm.node
 ---@return integer min
----@return integer max
+---@return number  max
 function vm.countParamsOfNode(node)
     local min, max
     for n in node:eachObject() do
@@ -80,17 +80,24 @@ function vm.countParamsOfNode(node)
 end
 
 ---@param func parser.object
+---@param onlyDoc? boolean
 ---@param mark? table
 ---@return integer min
----@return integer max
-function vm.countReturnsOfFunction(func, mark)
+---@return number  max
+function vm.countReturnsOfFunction(func, onlyDoc, mark)
     if func.type == 'function' then
-        local min, max
+        ---@type integer?
+        local min
+        ---@type number?
+        local max
         local hasDocReturn
         if func.bindDocs then
             local lastReturn
             local n = 0
-            local dmin, dmax
+            ---@type integer?
+            local dmin
+            ---@type number?
+            local dmax
             for _, doc in ipairs(func.bindDocs) do
                 if doc.type == 'doc.return' then
                     hasDocReturn = true
@@ -98,16 +105,14 @@ function vm.countReturnsOfFunction(func, mark)
                         n = n + 1
                         lastReturn = ret
                         dmax = n
-                        if not vm.compileNode(ret):isNullable() then
+                        if  (not ret.name or ret.name[1] ~= '...')
+                        and not vm.compileNode(ret):isNullable() then
                             dmin = n
                         end
                     end
                 end
             end
             if lastReturn then
-                if lastReturn.types[1][1] == '...' then
-                    dmax = math.huge
-                end
                 if lastReturn.name and lastReturn.name[1] == '...' then
                     dmax = math.huge
                 end
@@ -119,7 +124,7 @@ function vm.countReturnsOfFunction(func, mark)
                 max = dmax
             end
         end
-        if not hasDocReturn and func.returns then
+        if not onlyDoc and not hasDocReturn and func.returns then
             for _, ret in ipairs(func.returns) do
                 local rmin, rmax = vm.countList(ret, mark)
                 if not min or rmin < min then
@@ -141,13 +146,15 @@ end
 ---@param func parser.object
 ---@param mark? table
 ---@return integer min
----@return integer max
+---@return number  max
 function vm.countReturnsOfCall(func, args, mark)
     local funcs = vm.getMatchedFunctions(func, args)
+    ---@type integer?
     local min
+    ---@type number?
     local max
     for _, f in ipairs(funcs) do
-        local rmin, rmax = vm.countReturnsOfFunction(f, mark)
+        local rmin, rmax = vm.countReturnsOfFunction(f, false, mark)
         if not min or rmin < min then
             min = rmin
         end
@@ -161,7 +168,7 @@ end
 ---@param list parser.object[]?
 ---@param mark? table
 ---@return integer min
----@return integer max
+---@return number  max
 function vm.countList(list, mark)
     if not list then
         return 0, 0

@@ -15,6 +15,7 @@ local encoder  = require 'encoder'
 local scope    = require 'workspace.scope'
 
 ---@class file
+---@field uri          uri
 ---@field content      string
 ---@field _ref?        integer
 ---@field trusted?     boolean
@@ -136,6 +137,7 @@ function m.isLibrary(uri, excludeFolder)
 end
 
 --- 获取库文件的根目录
+---@return uri?
 function m.getLibraryUri(suri, uri)
     local scp = scope.getScope(suri)
     return scp:getLinkedUri(uri)
@@ -147,6 +149,9 @@ function m.exists(uri)
     return m.fileMap[uri] ~= nil
 end
 
+---@param file file
+---@param text string
+---@return string
 local function pluginOnSetText(file, text)
     local plugin   = require 'plugin'
     file._diffInfo = nil
@@ -344,7 +349,7 @@ end
 
 --- 获取文件原始文本
 ---@param uri uri
----@return string text
+---@return string? text
 function m.getOriginText(uri)
     local file = m.fileMap[uri]
     if not file then
@@ -358,9 +363,7 @@ end
 ---@return integer[]
 function m.getOriginLines(uri)
     local file = m.fileMap[uri]
-    if not file then
-        return nil
-    end
+    assert(file, 'file not exists:' .. uri)
     return file.originLines
 end
 
@@ -457,7 +460,6 @@ function m.eachFile(suri)
 end
 
 --- Pairs dll files
----@return function
 function m.eachDll()
     local map = {}
     for uri, file in pairs(m.dllMap) do

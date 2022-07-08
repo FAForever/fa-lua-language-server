@@ -2,13 +2,15 @@
 local vm        = require 'vm.vm'
 local guide     = require 'parser.guide'
 
----@alias vm.runner.callback fun(src: parser.object, node: vm.node)
+---@alias vm.runner.callback fun(src: parser.object, node?: vm.node)
 
 ---@class vm.runner
 ---@field _loc      parser.object
----@field _objs     parser.object[]
+---@field _casts    parser.object[]
 ---@field _callback vm.runner.callback
 ---@field _mark     table
+---@field _has      table<parser.object, true>
+---@field _main     parser.object
 local mt = {}
 mt.__index = mt
 mt._index = 1
@@ -28,6 +30,20 @@ function mt:_getCasts()
     return root._casts
 end
 
+---@param obj parser.object
+function mt:_markHas(obj)
+    while true do
+        if self._has[obj] then
+            return
+        end
+        self._has[obj] = true
+        if obj == self._main then
+            return
+        end
+        obj = obj.parent
+    end
+end
+
 function mt:_collect()
     local startPos  = self._loc.start
     local finishPos = 0
@@ -35,15 +51,11 @@ function mt:_collect()
     for _, ref in ipairs(self._loc.ref) do
         if ref.type == 'getlocal'
         or ref.type == 'setlocal' then
-            self._objs[#self._objs+1] = ref
-            if ref.start > finishPos then
-                finishPos = ref.start
+            self:_markHas(ref)
+            if ref.finish > finishPos then
+                finishPos = ref.finish
             end
         end
-    end
-
-    if #self._objs == 0 then
-        return
     end
 
     local casts = self:_getCasts()
@@ -52,179 +64,107 @@ function mt:_collect()
         and cast.start > startPos
         and cast.finish < finishPos
         and guide.getLocal(self._loc, self._loc[1], cast.start) == self._loc then
-            self._objs[#self._objs+1] = cast
+            self._casts[#self._casts+1] = cast
         end
     end
-
-    table.sort(self._objs, function (a, b)
-        return (a.range or a.start) < (b.range or b.start)
-    end)
 end
 
-
----@param pos  integer
----@param node vm.node
+---@param pos integer
+---@param topNode vm.node
 ---@return vm.node
----@return parser.object?
-function mt:_fastWard(pos, node)
-    for i = self._index, #self._objs do
-        local obj = self._objs[i]
-        if (obj.range or obj.finish) > pos then
+function mt:_fastWardCasts(pos, topNode)
+    for i = self._index, #self._casts do
+        local action = self._casts[i]
+        if action.start > pos then
             self._index = i
-            return node, obj
+            return topNode
         end
-        if obj.type == 'getlocal' then
-            self._callback(obj, node)
-        elseif obj.type == 'setlocal' then
-            local newNode = self._callback(obj, node)
-            if newNode then
-                node = newNode:copy()
-            end
-        elseif obj.type == 'doc.cast' then
-            node = node:copy()
-            for _, cast in ipairs(obj.casts) do
-                if     cast.mode == '+' then
-                    if cast.optional then
-                        node:addOptional()
-                    end
-                    if cast.extends then
-                        node:merge(vm.compileNode(cast.extends))
-                    end
-                elseif cast.mode == '-' then
-                    if cast.optional then
-                        node:removeOptional()
-                    end
-                    if cast.extends then
-                        node:removeNode(vm.compileNode(cast.extends))
-                    end
-                else
-                    if cast.extends then
-                        node:clear()
-                        node:merge(vm.compileNode(cast.extends))
-                    end
+        topNode = topNode:copy()
+        for _, cast in ipairs(action.casts) do
+            if     cast.mode == '+' then
+                if cast.optional then
+                    topNode:addOptional()
+                end
+                if cast.extends then
+                    topNode:merge(vm.compileNode(cast.extends))
+                end
+            elseif cast.mode == '-' then
+                if cast.optional then
+                    topNode:removeOptional()
+                end
+                if cast.extends then
+                    topNode:removeNode(vm.compileNode(cast.extends))
+                end
+            else
+                if cast.extends then
+                    topNode:clear()
+                    topNode:merge(vm.compileNode(cast.extends))
                 end
             end
         end
     end
-    self._index = #self._objs + 1
-    return node, nil
+    return topNode
 end
 
 ---@param action   parser.object
 ---@param topNode  vm.node
 ---@param outNode? vm.node
----@return vm.node
-function mt:_lookInto(action, topNode, outNode)
-    if not action then
-        return topNode, outNode
-    end
-    if self._mark[action] then
-        return topNode, outNode
+---@return vm.node topNode
+---@return vm.node outNode
+function mt:_lookIntoChild(action, topNode, outNode)
+    if not self._has[action]
+    or self._mark[action] then
+        return topNode, topNode or outNode
     end
     self._mark[action] = true
-    local top = self._objs[self._index]
-    if not top then
-        return topNode, outNode
-    end
-    if  not guide.isInRange(action, top.finish)
-    -- trick for `local tp = type(x);if tp == 'string' then`
-    and action.type ~= 'binary' then
-        return topNode, outNode
-    end
-    local set
-    local value = vm.getObjectValue(action)
-    if value then
-        set = action
-        action = value
-    end
-    if     action.type == 'function' then
-        self:_launchBlock(action, topNode:copy())
-    elseif action.type == 'loop'
-    or     action.type == 'in'
-    or     action.type == 'repeat'
-    or     action.type == 'for' then
-        topNode = self:_launchBlock(action, topNode:copy())
-    elseif action.type == 'while' then
-        local blockNode, mainNode = self:_lookInto(action.filter, topNode:copy(), topNode:copy())
-        if action.filter then
-            self:_fastWard(action.filter.finish, blockNode)
-        end
-        blockNode = self:_launchBlock(action, blockNode:copy())
-        topNode = mainNode:merge(blockNode)
-    elseif action.type == 'if' then
-        local hasElse
-        local mainNode = topNode:copy()
-        local blockNodes = {}
-        for _, subBlock in ipairs(action) do
-            local blockNode = mainNode:copy()
-            if subBlock.filter then
-                blockNode, mainNode = self:_lookInto(subBlock.filter, blockNode, mainNode)
-                self:_fastWard(subBlock.filter.finish, blockNode)
-            else
-                hasElse = true
-                mainNode:clear()
-            end
-            blockNode = self:_launchBlock(subBlock, blockNode:copy())
-            local neverReturn = subBlock.hasReturn
-                            or  subBlock.hasGoTo
-                            or  subBlock.hasBreak
-                            or  subBlock.hasError
-            if not neverReturn then
-                blockNodes[#blockNodes+1] = blockNode
-            end
-        end
-        if not hasElse and not topNode:hasKnownType() then
-            mainNode:merge(vm.declareGlobal('type', 'unknown'))
-        end
-        for _, blockNode in ipairs(blockNodes) do
-            mainNode:merge(blockNode)
-        end
-        topNode = mainNode
-    elseif action.type == 'getlocal' then
+    topNode = self:_fastWardCasts(action.start, topNode)
+    if     action.type == 'getlocal' then
         if action.node == self._loc then
-            topNode = self:_fastWard(action.finish, topNode)
-            topNode = topNode:copy():setTruthy()
+            self._callback(action, topNode)
             if outNode then
-                outNode:setFalsy()
+                topNode = topNode:copy():setTruthy()
+                outNode = outNode:copy():setFalsy()
             end
         end
+    elseif action.type == 'function' then
+        self:_lookIntoBlock(action, topNode:copy())
     elseif action.type == 'unary' then
         if not action[1] then
             goto RETURN
         end
         if action.op.type == 'not' then
             outNode = outNode or topNode:copy()
-            outNode, topNode = self:_lookInto(action[1], topNode, outNode)
+            outNode, topNode = self:_lookIntoChild(action[1], topNode, outNode)
         end
     elseif action.type == 'binary' then
         if not action[1] or not action[2] then
             goto RETURN
         end
         if     action.op.type == 'and' then
-            topNode = self:_lookInto(action[1], topNode)
-            topNode = self:_lookInto(action[2], topNode)
+            topNode = self:_lookIntoChild(action[1], topNode, topNode:copy())
+            topNode = self:_lookIntoChild(action[2], topNode, topNode:copy())
         elseif action.op.type == 'or' then
             outNode = outNode or topNode:copy()
-            local topNode1, outNode1 = self:_lookInto(action[1], topNode, outNode)
-            local topNode2, outNode2 = self:_lookInto(action[2], outNode1, outNode1:copy())
+            local topNode1, outNode1 = self:_lookIntoChild(action[1], topNode, outNode)
+            local topNode2, outNode2 = self:_lookIntoChild(action[2], outNode1, outNode1:copy())
             topNode = vm.createNode(topNode1, topNode2)
-            outNode = outNode2
+            outNode = outNode2:copy()
         elseif action.op.type == '=='
         or     action.op.type == '~=' then
-            local exp, checker
+            local handler, checker
             for i = 1, 2 do
                 if guide.isLiteral(action[i]) then
                     checker = action[i]
-                    exp     = action[3-i] -- Copilot tells me use `3-i` instead of `i%2+1`
+                    handler = action[3-i] -- Copilot tells me use `3-i` instead of `i%2+1`
                 end
             end
-            if not exp then
+            if not handler then
                 goto RETURN
             end
-            if  exp.type == 'getlocal'
-            and exp.node == self._loc then
+            if  handler.type == 'getlocal'
+            and handler.node == self._loc then
                 -- if x == y then
-                self:_fastWard(exp.finish, topNode:copy())
+                topNode = self:_lookIntoChild(handler, topNode, outNode)
                 local checkerNode = vm.compileNode(checker)
                 if action.op.type == '==' then
                     topNode = checkerNode
@@ -237,15 +177,15 @@ function mt:_lookInto(action, topNode, outNode)
                         outNode = checkerNode
                     end
                 end
-            elseif exp.type == 'call'
+            elseif handler.type == 'call'
             and    checker.type == 'string'
-            and    exp.node.special == 'type'
-            and    exp.args
-            and    exp.args[1]
-            and    exp.args[1].type == 'getlocal'
-            and    exp.args[1].node == self._loc then
+            and    handler.node.special == 'type'
+            and    handler.args
+            and    handler.args[1]
+            and    handler.args[1].type == 'getlocal'
+            and    handler.args[1].node == self._loc then
                 -- if type(x) == 'string' then
-                self:_fastWard(exp.finish, topNode:copy())
+                self:_lookIntoChild(handler, topNode:copy())
                 if action.op.type == '==' then
                     topNode:narrow(checker[1])
                     if outNode then
@@ -257,9 +197,9 @@ function mt:_lookInto(action, topNode, outNode)
                         outNode:narrow(checker[1])
                     end
                 end
-            elseif exp.type == 'getlocal'
+            elseif handler.type == 'getlocal'
             and    checker.type == 'string' then
-                local nodeValue = vm.getObjectValue(exp.node)
+                local nodeValue = vm.getObjectValue(handler.node)
                 if  nodeValue
                 and nodeValue.type == 'select'
                 and nodeValue.sindex == 1 then
@@ -287,71 +227,127 @@ function mt:_lookInto(action, topNode, outNode)
                 end
             end
         end
-    elseif action.type == 'call' then
-        if action.node.special == 'assert' and action.args and action.args[1] then
-            topNode = self:_lookInto(action.args[1], topNode)
-        elseif action.args then
-            for _, arg in ipairs(action.args) do
-                self:_lookInto(arg, topNode)
+    elseif action.type == 'loop'
+    or     action.type == 'in'
+    or     action.type == 'repeat'
+    or     action.type == 'for' then
+        topNode = self:_lookIntoBlock(action, topNode:copy())
+    elseif action.type == 'while' then
+        local blockNode, mainNode
+        if action.filter then
+            blockNode, mainNode = self:_lookIntoChild(action.filter, topNode:copy(), topNode:copy())
+        else
+            blockNode = topNode:copy()
+            mainNode  = topNode:copy()
+        end
+        blockNode = self:_lookIntoBlock(action, blockNode:copy())
+        if mainNode then
+            topNode = mainNode:merge(blockNode)
+        end
+    elseif action.type == 'if' then
+        local hasElse
+        local mainNode = topNode:copy()
+        local blockNodes = {}
+        for _, subBlock in ipairs(action) do
+            local blockNode = mainNode:copy()
+            if subBlock.filter then
+                blockNode, mainNode = self:_lookIntoChild(subBlock.filter, blockNode, mainNode)
+            else
+                hasElse = true
+                mainNode:clear()
+            end
+            blockNode = self:_lookIntoBlock(subBlock, blockNode:copy())
+            local neverReturn = subBlock.hasReturn
+                            or  subBlock.hasGoTo
+                            or  subBlock.hasBreak
+                            or  subBlock.hasError
+            if not neverReturn then
+                blockNodes[#blockNodes+1] = blockNode
             end
         end
-    elseif action.type == 'paren' then
-        topNode, outNode = self:_lookInto(action.exp, topNode, outNode)
-    elseif action.type == 'return' then
-        for _, rtn in ipairs(action) do
-            self:_lookInto(rtn, topNode)
+        if not hasElse and not topNode:hasKnownType() then
+            mainNode:merge(vm.declareGlobal('type', 'unknown'))
         end
-    elseif action.type == 'getindex' then
-        self:_lookInto(action.index, topNode)
+        for _, blockNode in ipairs(blockNodes) do
+            mainNode:merge(blockNode)
+        end
+        topNode = mainNode
+    elseif action.type == 'call' then
+        if action.node.special == 'assert' and action.args and action.args[1] then
+            topNode = self:_lookIntoChild(action.args[1], topNode, topNode:copy())
+        end
+    elseif action.type == 'paren' then
+        topNode, outNode = self:_lookIntoChild(action.exp, topNode, outNode)
+    elseif action.type == 'setlocal' then
+        if action.node == self._loc then
+            if action.value then
+                self:_lookIntoChild(action.value, topNode)
+            end
+            topNode = self._callback(action, topNode)
+        end
+    elseif action.type == 'local' then
+        if  action.value
+        and action.value.type == 'select' then
+            local index = action.value.sindex
+            local call  = action.value.vararg
+            if  index == 1
+            and call.type == 'call'
+            and call.node
+            and call.node.special == 'type'
+            and call.args then
+                local getLoc = call.args[1]
+                if  getLoc
+                and getLoc.type == 'getlocal'
+                and getLoc.node == self._loc then
+                    for _, ref in ipairs(action.ref) do
+                        self:_markHas(ref)
+                    end
+                end
+            end
+        end
     end
     ::RETURN::
-    topNode = self:_fastWard(action.finish, topNode)
-    if set then
-        topNode = self:_fastWard(set.range or set.finish, topNode)
-    end
-    return topNode, outNode
+    guide.eachChild(action, function (src)
+        if self._has[src] then
+            self:_lookIntoChild(src, topNode)
+        end
+    end)
+    return topNode, outNode or topNode
 end
 
----@param block parser.object
----@param node  vm.node
----@return vm.node
-function mt:_launchBlock(block, node)
-    local topNode, top = self:_fastWard(block.start, node)
-    if not top then
+---@param block   parser.object
+---@param topNode  vm.node
+---@return vm.node topNode
+function mt:_lookIntoBlock(block, topNode)
+    if not self._has[block] then
         return topNode
     end
     for _, action in ipairs(block) do
-        if (action.range or action.finish) < (top.range or top.finish) then
-            goto CONTINUE
+        if self._has[action] then
+            topNode = self:_lookIntoChild(action, topNode)
         end
-        topNode = self:_lookInto(action, topNode)
-        topNode, top = self:_fastWard(action.range or action.finish, topNode)
-        if not top then
-            return topNode
-        end
-        ::CONTINUE::
     end
-    -- `x = function () end`: don't touch `x` in the end of function
-    topNode = self:_fastWard(block.finish - 1, topNode)
+    topNode = self:_fastWardCasts(block.finish, topNode)
     return topNode
 end
 
 ---@param loc parser.object
 ---@param callback vm.runner.callback
 function vm.launchRunner(loc, callback)
+    local main = guide.getParentBlock(loc)
+    if not main then
+        return
+    end
     local self = setmetatable({
         _loc      = loc,
-        _objs     = {},
+        _casts    = {},
         _mark     = {},
+        _has      = {},
+        _main     = main,
         _callback = callback,
     }, mt)
 
     self:_collect()
 
-    if #self._objs == 0 then
-        return
-    end
-
-    local topNode = self:_launchBlock(guide.getParentBlock(loc), vm.getNode(loc):copy())
-    self:_fastWard(math.maxinteger, topNode)
+    self:_lookIntoBlock(main, vm.getNode(loc):copy())
 end

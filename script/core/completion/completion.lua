@@ -18,6 +18,7 @@ local lookBackward = require 'core.look-backward'
 local guide        = require 'parser.guide'
 local await        = require 'await'
 local postfix      = require 'core.completion.postfix'
+local diag         = require 'proto.diagnostic'
 
 local diagnosticModes = {
     'disable-next-line',
@@ -159,31 +160,18 @@ local function buildFunctionSnip(source, value, oop)
     if oop then
         table.remove(args, 1)
     end
-    local len = #args
-    local truncated = false
-    if len > 0 and args[len]:match('^%s*%.%.%.:')  then
-        table.remove(args)
-        truncated = true
-    end
-    for i = #args, 1, -1 do
-        if args[i]:match('^%s*[^?]+%?:')
-        or args[i]:match('^%.%.%.') then
-            table.remove(args)
-            truncated = true
-        else
-            break
-        end
-    end
 
     local snipArgs = {}
     for id, arg in ipairs(args) do
-        local str =  arg:gsub('^(%s*)(.+)', function (sp, word)
+        local str, count = arg:gsub('^(%s*)(%.%.%.)(.+)', function (sp, word)
             return ('%s${%d:%s}'):format(sp, id, word)
         end)
+        if count == 0 then
+            str = arg:gsub('^(%s*)([^:]+)(.+)', function (sp, word)
+                return ('%s${%d:%s}'):format(sp, id, word)
+            end)
+        end
         table.insert(snipArgs, str)
-    end
-    if truncated and #snipArgs == 0 then
-        snipArgs = {'$1'}
     end
     return ('%s(%s)'):format(name, table.concat(snipArgs, ', '))
 end
@@ -1133,7 +1121,6 @@ local function cleanEnums(enums, source)
     return enums
 end
 
----@return boolean
 local function insertEnum(state, src, enums, isInArray)
     if src.type == 'doc.type.string'
     or src.type == 'doc.type.integer'
@@ -1837,7 +1824,7 @@ local function tryluaDocByErr(state, position, err, docState, results)
             }
         end
     elseif err.type == 'LUADOC_MISS_DIAG_NAME' then
-        for name in util.sortPairs(define.DiagnosticDefaultSeverity) do
+        for name in util.sortPairs(diag.getDiagAndErrNameMap()) do
             results[#results+1] = {
                 label = name,
                 kind  = define.CompletionItemKind.Value,

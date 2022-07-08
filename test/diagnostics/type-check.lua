@@ -496,5 +496,203 @@ TEST [[
 local <!x!> = 'aaa'
 ]]
 
+TEST [[
+---@return number
+function F()
+    return <!true!>
+end
+]]
+
+TEST [[
+---@return number?
+function F()
+    return 1
+end
+]]
+
+TEST [[
+---@return number?
+function F()
+    return nil
+end
+]]
+
+TEST [[
+---@return number, number
+local function f() end
+
+---@return number, boolean
+function F()
+    return <!f()!>
+end
+]]
+
+TEST [[
+---@return boolean, number
+local function f() end
+
+---@return number, boolean
+function F()
+    return <!f()!>
+end
+]]
+
+TEST [[
+---@return boolean, number?
+local function f() end
+
+---@return number, boolean
+function F()
+    return 1, f()
+end
+]]
+
+TEST [[
+---@return number, number?
+local function f() end
+
+---@return number, boolean, number
+function F()
+    return 1, <!f()!>
+end
+]]
+
+TEST [[
+---@class A
+---@field x number?
+
+---@return number
+function F()
+    ---@type A
+    local t
+    return t.x
+end
+]]
+
+TEST [[
+---@class A
+---@field x number?
+local t = {}
+
+---@return number
+function F()
+    return t.x
+end
+]]
+
+TEST [[
+---@param ... number
+local function f(...)
+end
+
+f(nil)
+]]
+
+TEST [[
+---@return number
+function F()
+    local n = 0
+    if true then
+        n = 1
+    end
+    return n
+end
+]]
+
+TEST [[
+---@class X
+
+---@class A
+local mt = G
+
+---@type X
+mt._x = nil
+]]
+
+config.set(nil, 'Lua.type.weakNilCheck', true)
+TEST [[
+---@type number?
+local nb
+
+---@type number
+local n
+
+n = nb
+]]
+
+TEST [[
+---@type number|nil
+local nb
+
+---@type number
+local n
+
+n = nb
+]]
+config.set(nil, 'Lua.type.weakNilCheck', false)
+
+TEST [[
+---@class A
+local a = {}
+
+---@class B: A
+local <!b!> = a
+]]
+
+TEST [[
+---@class A
+local a = {}
+a.__index = a
+
+---@class B: A
+local b = setmetatable({}, a)
+]]
+
+TEST [[
+---@class A
+local a = {}
+
+---@class B: A
+local b = setmetatable({}, {__index = a})
+]]
+
+TEST [[
+---@class A
+local a = {}
+
+---@class B
+local <!b!> = setmetatable({}, {__index = a})
+]]
+
+TEST [[
+---@class A
+---@field x number?
+local a
+
+---@class B
+---@field x number
+local b
+
+b.x = a.x
+]]
+
+TEST [[
+
+---@class A
+---@field x number?
+local a
+
+---@type number
+local t
+
+t = a.x
+]]
+
+TEST [[
+local mt = {}
+mt.x = 1
+mt.x = nil
+]]
+
 config.remove(nil, 'Lua.diagnostics.disable', 'unused-local')
 config.remove(nil, 'Lua.diagnostics.disable', 'undefined-global')

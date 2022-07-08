@@ -1,5 +1,6 @@
 local util   = require 'utility'
 local define = require 'proto.define'
+local diag   = require 'proto.diagnostic'
 
 ---@class config.unit
 ---@field caller function
@@ -209,7 +210,8 @@ local template = {
     ['Lua.runtime.nonstandardSymbol']       = Type.Array(Type.String << {
                                                 '//', '/**/',
                                                 '`',
-                                                '+=', '-=', '*=', '/=',
+                                                '+=', '-=', '*=', '/=', '%=', '^=', '//=',
+                                                '|=', '&=', '<<=', '>>=',
                                                 '||', '&&', '!', '!=',
                                                 'continue',
                                             }),
@@ -232,7 +234,7 @@ local template = {
     ['Lua.runtime.exportEnvDefault']       = Type.Boolean >> false,
     ['Lua.diagnostics.enable']              = Type.Boolean >> true,
     ['Lua.diagnostics.globals']             = Type.Array(Type.String),
-    ['Lua.diagnostics.disable']             = Type.Array(Type.String),
+    ['Lua.diagnostics.disable']             = Type.Array(Type.String << util.getTableKeys(diag.getDiagAndErrNameMap())),
     ['Lua.diagnostics.severity']            = Type.Hash(
                                                 Type.String << util.getTableKeys(define.DiagnosticDefaultNeededFileStatus, true),
                                                 Type.String << {
@@ -366,6 +368,7 @@ local template = {
     ['Lua.misc.parameters']                 = Type.Array(Type.String),
     ['Lua.type.castNumberToInteger']        = Type.Boolean >> false,
     ['Lua.type.weakUnionCheck']             = Type.Boolean >> false,
+    ['Lua.type.weakNilCheck']               = Type.Boolean >> false,
 
     -- VSCode
     ['files.associations']                  = Type.Hash(Type.String, Type.String),

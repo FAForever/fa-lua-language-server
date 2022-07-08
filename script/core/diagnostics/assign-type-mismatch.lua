@@ -15,6 +15,35 @@ local checkTypes = {
     'tableindex'
 }
 
+---@param source parser.object
+---@return boolean
+local function hasMarkType(source)
+    if not source.bindDocs then
+        return false
+    end
+    for _, doc in ipairs(source.bindDocs) do
+        if doc.type == 'doc.type'
+        or doc.type == 'doc.class' then
+            return true
+        end
+    end
+    return false
+end
+
+---@param source parser.object
+---@return boolean
+local function hasMarkClass(source)
+    if not source.bindDocs then
+        return false
+    end
+    for _, doc in ipairs(source.bindDocs) do
+        if doc.type == 'doc.class' then
+            return true
+        end
+    end
+    return false
+end
+
 ---@async
 return function (uri, callback)
     local state = files.getState(uri)
@@ -35,15 +64,52 @@ return function (uri, callback)
                 return
             end
         end
+        if value.type == 'nil' then
+            --[[
+            ---@class A
+            local mt
+            ---@type X
+            mt._x = nil -- don't warn this
+            ]]
+            if hasMarkType(source) then
+                return
+            end
+            if source.type == 'setfield'
+            or source.type == 'setindex' then
+                return
+            end
+        end
+
         local valueNode = vm.compileNode(value)
-        if  source.type == 'setindex' then
+        if source.type == 'setindex' then
             -- boolean[1] = nil
             valueNode = valueNode:copy():removeOptional()
         end
+
+        if value.type == 'getfield'
+        or value.type == 'getindex' then
+            -- 由于无法对字段进行类型收窄，
+            -- 因此将假值移除再进行检查
+            valueNode = valueNode:copy():setTruthy()
+        end
+
         local varNode = vm.compileNode(source)
         if vm.canCastType(uri, varNode, valueNode) then
             return
         end
+
+        -- local Cat = setmetatable({}, {__index = Animal}) 允许逆变
+        if  value.type == 'select'
+        and value.sindex == 1
+        and value.vararg
+        and value.vararg.type == 'call'
+        and value.vararg.node.special == 'setmetatable'
+        and hasMarkClass(source) then
+            if vm.canCastType(uri, valueNode:copy():remove 'table', varNode) then
+                return
+            end
+        end
+
         callback {
             start   = source.start,
             finish  = source.finish,

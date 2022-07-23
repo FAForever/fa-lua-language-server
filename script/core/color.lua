@@ -179,7 +179,7 @@ local function colorToText(color)
         .. string.format('%02x', math.tointeger(color.green * 255))
         .. string.format('%02x', math.tointeger(color.blue * 255))):upper()
     for enum, enumCol in pairs(enumColors) do
-        if color == enumCol then
+        if text == enumCol then
             return enum
         end
     end

@@ -152,18 +152,18 @@ local function tryParseColor(colorText)
     if enumColors[colorText] then
         colorText = enumColors[colorText]
     end
-	if colorText:len() == 6 then
-		colorText = "FF" .. colorText
-	end
+    if colorText:len() == 6 then
+        colorText = "FF" .. colorText
+    end
     if colorText:len() ~= 8 or not colorText:match(colorPattern) then
-		return nil
-	end
-	return {
-		alpha = tonumber(colorText:sub(1, 2), 16) / 255,
-		red = tonumber(colorText:sub(3, 4), 16) / 255,
-		green = tonumber(colorText:sub(5, 6), 16) / 255,
-		blue = tonumber(colorText:sub(7, 8), 16) / 255,
-	}
+        return nil
+    end
+    return {
+        alpha = tonumber(colorText:sub(1, 2), 16) / 255,
+        red = tonumber(colorText:sub(3, 4), 16) / 255,
+        green = tonumber(colorText:sub(5, 6), 16) / 255,
+        blue = tonumber(colorText:sub(7, 8), 16) / 255,
+    }
 end
 
 
@@ -171,19 +171,19 @@ end
 ---@return string
 local function colorToText(color)
     local text = ""
-	if color.alpha < 1.0 then
-		text = text .. string.format('%02x', math.tointeger(color.alpha * 255))
-	end
-	text = (text
+    if color.alpha < 1.0 then
+        text = text .. string.format('%02x', math.tointeger(color.alpha * 255))
+    end
+    text = (text
         .. string.format('%02x', math.tointeger(color.red * 255))
         .. string.format('%02x', math.tointeger(color.green * 255))
         .. string.format('%02x', math.tointeger(color.blue * 255))):upper()
-	for enum, enumCol in pairs(enumColors) do
-		if color == enumCol then
-			return enum
-		end
-	end
-	return text
+    for enum, enumCol in pairs(enumColors) do
+        if color == enumCol then
+            return enum
+        end
+    end
+    return text
 end
 
 ---@class Color

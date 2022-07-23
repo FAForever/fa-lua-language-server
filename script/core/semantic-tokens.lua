@@ -134,19 +134,16 @@ local Care = util.switch()
             return
         end
         local loc = source.node or source
+        local uri = guide.getUri(loc)
         -- 1. 值为函数的局部变量 | Local variable whose value is a function
-        if loc.ref then
-            for _, ref in ipairs(loc.ref) do
-                if ref.value and ref.value.type == 'function' then
-                    results[#results+1] = {
-                        start      = source.start,
-                        finish     = source.finish,
-                        type       = define.TokenTypes['function'],
-                        modifieres = define.TokenModifiers.declaration,
-                    }
-                    return
-                end
-            end
+        if vm.getInfer(source):hasFunction(uri) then
+            results[#results+1] = {
+                start      = source.start,
+                finish     = source.finish,
+                type       = define.TokenTypes['function'],
+                modifieres = define.TokenModifiers.declaration,
+            }
+            return
         end
         -- 3. 特殊变量 | Special variableif source[1] == '_ENV' then
         if loc[1] == '_ENV' then
@@ -449,6 +446,7 @@ local Care = util.switch()
         end
     end)
     : case 'doc.alias.name'
+    : case 'doc.enum.name'
     : call(function (source, options, results)
         if not options.annotation then
             return
@@ -690,6 +688,14 @@ local Care = util.switch()
             finish     = source.finish,
             type       = define.TokenTypes.string,
             modifieres = define.TokenModifiers.abstract,
+        }
+    end)
+    : case 'doc.operator.name'
+    : call(function (source, options, results)
+        results[#results+1] = {
+            start      = source.start,
+            finish     = source.finish,
+            type       = define.TokenTypes.operator,
         }
     end)
 

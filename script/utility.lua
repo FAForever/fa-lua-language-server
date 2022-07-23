@@ -524,6 +524,14 @@ function m.revertTable(t)
     return t
 end
 
+function m.revertMap(t)
+    local nt = {}
+    for k, v in pairs(t) do
+        nt[v] = k
+    end
+    return nt
+end
+
 function m.randomSortTable(t, max)
     local len = #t
     if len <= 1 then
@@ -791,6 +799,8 @@ function m.multiTable(count, default)
     return current
 end
 
+---@param t table
+---@param sorter boolean|function
 function m.getTableKeys(t, sorter)
     local keys = {}
     for k in pairs(t) do
@@ -798,7 +808,7 @@ function m.getTableKeys(t, sorter)
     end
     if sorter == true then
         tableSort(keys)
-    elseif sorter then
+    elseif type(sorter) == 'function' then
         tableSort(keys, sorter)
     end
     return keys

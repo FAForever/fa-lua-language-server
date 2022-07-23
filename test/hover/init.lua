@@ -2091,3 +2091,42 @@ end
     a: integer = 1,
 }
 ]]
+
+TEST [[
+local y
+if X then
+    y = true
+else
+    y = false
+end
+
+local bool = y
+
+bool = bool and y
+
+if bool then
+end
+
+print(<?bool?>)
+]]
+[[
+local bool: boolean = true|false
+]]
+
+TEST [[
+---@type 'a'
+local <?s?>
+]]
+[[
+local s: 'a'
+]]
+
+TEST [[
+---@enum <?A?>
+local m = {
+    x = 1,
+}
+]]
+[[
+(enum) A
+]]

@@ -133,6 +133,40 @@ _ENV = nil
 ]]
 
 TEST [[
+---@diagnostic disable: undefined-global
+_ENV = nil
+<!print!>(<!A!>) -- `print` and `A` should warning 
+]]
+
+TEST [[
+---@diagnostic disable: undefined-global
+local _ENV = nil
+<!print!>(<!A!>) -- `print` and `A` should warning 
+]]
+
+TEST [[
+_ENV = {}
+print(A) -- no warning
+]]
+
+TEST [[
+local _ENV = {}
+print(A) -- no warning
+]]
+
+TEST [[
+---@type iolib
+_ENV = {}
+<!print!>(stderr) -- `print` is warning but `stderr` is not
+]]
+
+TEST [[
+---@type iolib
+local _ENV = {}
+<!print!>(stderr) -- `print` is warning but `stderr` is not
+]]
+
+TEST [[
 local _ENV = { print = print }
 print(1)
 ]]
@@ -808,7 +842,7 @@ TEST [[
 ]]
 
 TEST [[
----@param x <!Class!>
+---@param <!x!> <!Class!>
 ]]
 
 TEST [[
@@ -1659,6 +1693,12 @@ TEST [[
 ]]
 
 TEST [[
+---@diagnostic disable: unused-local
+local x, y
+---@cast y number
+]]
+
+TEST [[
 ---@class A
 
 ---@class B
@@ -1902,3 +1942,61 @@ end
 ]]
 
 util.arrayRemove(disables, 'redundant-return')
+
+TEST [[
+---@class A
+---@operator <!xxx!>: A
+]]
+
+config.add(nil, 'Lua.diagnostics.unusedLocalExclude', 'll_*')
+
+TEST [[
+local <!xx!>
+local ll_1
+local ll_2
+local <!ll!>
+]]
+
+config.remove(nil, 'Lua.diagnostics.unusedLocalExclude', 'll_*')
+
+TEST [[
+---@diagnostic disable: undefined-global
+
+if X then
+    return false
+elseif X then
+    return false
+else
+    return false
+end
+<!return true!>
+]]
+
+TEST [[
+---@diagnostic disable: undefined-global
+
+function X()
+    if X then
+        return false
+    elseif X then
+        return false
+    else
+        return false
+    end
+    <!return true!>
+end
+]]
+
+TEST [[
+---@diagnostic disable: undefined-global
+
+while true do
+    if not X then
+        break
+    end
+end
+
+print(1)
+
+do return end
+]]

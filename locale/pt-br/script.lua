@@ -140,6 +140,10 @@ DIAG_MISSING_RETURN                   = -- TODO: need translate!
 'Return value is required here.'
 DIAG_RETURN_TYPE_MISMATCH             = -- TODO: need translate!
 'The type of the {index} return value is `{def}`, but the actual return is `{ref}`.'
+DIAG_UNKNOWN_OPERATOR                 = -- TODO: need translate!
+'Unknown operator `{}`.'
+DIAG_UNREACHABLE_CODE                 = -- TODO: need translate!
+'Unreachable code.'
 
 MWS_NOT_SUPPORT         =
 '{} não é suportado múltiplos espaços de trabalho por enquanto, posso precisar reiniciar para estabelecer um novo espaço de trabalho ...'
@@ -472,6 +476,8 @@ WINDOW_PROCESSING_SEMANTIC_RANGE =
 'Processando tokens semânticas incrementais...'
 WINDOW_PROCESSING_HINT           =
 'Processando dicas de lina...'
+WINDOW_PROCESSING_BUILD_META     = -- TODO: need translate!
+'Processing build meta...'
 WINDOW_INCREASE_UPPER_LIMIT      =
 'Aumente o limite superior'
 WINDOW_CLOSE                     =
@@ -1015,4 +1021,61 @@ print(x) --> table
 ```
 ---
 [View Wiki](https://github.com/sumneko/lua-language-server/wiki/EmmyLua-Annotations#cast)
+]=]
+LUADOC_DESC_OPERATOR = -- TODO: need translate!
+[=[
+Provide type declaration for [operator metamethods](http://lua-users.org/wiki/MetatableEvents).
+
+## Syntax
+`@operator <operation>[(input_type)]:<resulting_type>`
+
+## Usage
+### Vector Add Metamethod
+```
+---@class Vector
+---@operation add(Vector):Vector
+
+vA = Vector.new(1, 2, 3)
+vB = Vector.new(10, 20, 30)
+
+vC = vA + vB
+--> Vector
+```
+### Unary Minus
+```
+---@class Passcode
+---@operation unm:integer
+
+pA = Passcode.new(1234)
+pB = -pA
+--> integer
+```
+[View Request](https://github.com/sumneko/lua-language-server/issues/599)
+]=]
+LUADOC_DESC_ENUM = -- TODO: need translate!
+[=[
+Mark a table as an enum. If you want an enum but can't define it as a Lua
+table, take a look at the [`@alias`](https://github.com/sumneko/lua-language-server/wiki/EmmyLua-Annotations#alias)
+tag.
+
+## Syntax
+`@enum <name>`
+
+## Usage
+```
+---@enum colors
+local colors = {
+	white = 0,
+	orange = 2,
+	yellow = 4,
+	green = 8,
+	black = 16,
+}
+
+---@param color colors
+local function setColor(color) end
+
+-- Completion and hover is provided for the below param
+setColor(colors.green)
+```
 ]=]

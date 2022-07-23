@@ -4,7 +4,7 @@ local type         = type
 ---@class parser.object
 ---@field bindDocs              parser.object[]
 ---@field bindGroup             parser.object[]
----@field bindSources           parser.object[]
+---@field bindSource            parser.object
 ---@field value                 parser.object
 ---@field parent                parser.object
 ---@field type                  string
@@ -13,6 +13,7 @@ local type         = type
 ---@field args                  { [integer]: parser.object, start: integer, finish: integer }
 ---@field locals                parser.object[]
 ---@field returns?              parser.object[]
+---@field breaks?               parser.object[]
 ---@field exps                  parser.object[]
 ---@field keys                  parser.object
 ---@field uri                   uri
@@ -44,6 +45,7 @@ local type         = type
 ---@field exp                   parser.object
 ---@field alias                 parser.object
 ---@field class                 parser.object
+---@field enum                  parser.object
 ---@field vararg                parser.object
 ---@field param                 parser.object
 ---@field overload              parser.object
@@ -51,6 +53,8 @@ local type         = type
 ---@field upvalues              table<string, string[]>
 ---@field ref                   parser.object[]
 ---@field returnIndex           integer
+---@field assignIndex           integer
+---@field docIndex              integer
 ---@field docs                  parser.object[]
 ---@field state                 table
 ---@field comment               table
@@ -138,6 +142,7 @@ local childMap = {
     ['doc.class']          = {'class', '#extends', '#signs', 'comment'},
     ['doc.type']           = {'#types', 'name', 'comment'},
     ['doc.alias']          = {'alias', 'extends', 'comment'},
+    ['doc.enum']           = {'enum', 'extends', 'comment'},
     ['doc.param']          = {'param', 'extends', 'comment'},
     ['doc.return']         = {'#returns', 'comment'},
     ['doc.field']          = {'field', 'extends', 'comment'},
@@ -158,6 +163,7 @@ local childMap = {
     ['doc.as']             = {'as'},
     ['doc.cast']           = {'loc', '#casts'},
     ['doc.cast.block']     = {'extends'},
+    ['doc.operator']       = {'op', 'exp', 'extends'}
 }
 
 ---@type table<string, fun(obj: parser.object, list: parser.object[])>
@@ -249,32 +255,6 @@ m.actionMap = {
     ['function']    = {'#'},
     ['funcargs']    = {'#'},
 }
-
-local inf          = 1 / 0
-local nan          = 0 / 0
-
-local function isInteger(n)
-    if math.type then
-        return math.type(n) == 'integer'
-    else
-        return type(n) == 'number' and n % 1 == 0
-    end
-end
-
-local function formatNumber(n)
-    if n == inf
-    or n == -inf
-    or n == nan
-    or n ~= n then -- IEEE 标准中，NAN 不等于自己。但是某些实现中没有遵守这个规则
-        return ('%q'):format(n)
-    end
-    if isInteger(n) then
-        return tostring(n)
-    end
-    local str = ('%.10f'):format(n)
-    str = str:gsub('%.?0*$', '')
-    return str
-end
 
 --- 是否是字面量
 ---@param obj table
@@ -906,9 +886,11 @@ local isSetMap = {
     ['label']             = true,
     ['doc.class']         = true,
     ['doc.alias']         = true,
+    ['doc.enum']          = true,
     ['doc.field']         = true,
     ['doc.class.name']    = true,
     ['doc.alias.name']    = true,
+    ['doc.enum.name']     = true,
     ['doc.field.name']    = true,
     ['doc.type.field']    = true,
     ['doc.type.array']    = true,
@@ -1025,6 +1007,8 @@ function m.getKeyName(obj)
         return obj.class[1]
     elseif tp == 'doc.alias' then
         return obj.alias[1]
+    elseif tp == 'doc.enum' then
+        return obj.enum[1]
     elseif tp == 'doc.field' then
         return obj.field[1]
     elseif tp == 'doc.field.name' then
@@ -1087,6 +1071,8 @@ function m.getKeyType(obj)
     elseif tp == 'doc.class' then
         return 'string'
     elseif tp == 'doc.alias' then
+        return 'string'
+    elseif tp == 'doc.enum' then
         return 'string'
     elseif tp == 'doc.field' then
         return type(obj.field[1])

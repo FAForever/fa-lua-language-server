@@ -140,6 +140,10 @@ DIAG_MISSING_RETURN                   =
 '此處需要回傳值。'
 DIAG_RETURN_TYPE_MISMATCH             =
 '第 {index} 個回傳值的類型為 `{def}` ，但實際回傳的是 `{ref}`。'
+DIAG_UNKNOWN_OPERATOR                 = -- TODO: need translate!
+'Unknown operator `{}`.'
+DIAG_UNREACHABLE_CODE                 = -- TODO: need translate!
+'Unreachable code.'
 
 MWS_NOT_SUPPORT         =
 '{} 目前還不支援多工作目錄，我可能需要重新啟動才能支援新的工作目錄...'
@@ -472,6 +476,8 @@ WINDOW_PROCESSING_SEMANTIC_RANGE =
 '正在處理差量語義著色...'
 WINDOW_PROCESSING_HINT           =
 '正在處理內嵌提示...'
+WINDOW_PROCESSING_BUILD_META     = -- TODO: need translate!
+'Processing build meta...'
 WINDOW_INCREASE_UPPER_LIMIT      =
 '增加上限'
 WINDOW_CLOSE                     =
@@ -1010,4 +1016,61 @@ print(x) --> table
 ```
 ---
 [檢視文件](https://github.com/sumneko/lua-language-server/wiki/EmmyLua-Annotations#cast)
+]=]
+LUADOC_DESC_OPERATOR = -- TODO: need translate!
+[=[
+Provide type declaration for [operator metamethods](http://lua-users.org/wiki/MetatableEvents).
+
+## Syntax
+`@operator <operation>[(input_type)]:<resulting_type>`
+
+## Usage
+### Vector Add Metamethod
+```
+---@class Vector
+---@operation add(Vector):Vector
+
+vA = Vector.new(1, 2, 3)
+vB = Vector.new(10, 20, 30)
+
+vC = vA + vB
+--> Vector
+```
+### Unary Minus
+```
+---@class Passcode
+---@operation unm:integer
+
+pA = Passcode.new(1234)
+pB = -pA
+--> integer
+```
+[View Request](https://github.com/sumneko/lua-language-server/issues/599)
+]=]
+LUADOC_DESC_ENUM = -- TODO: need translate!
+[=[
+Mark a table as an enum. If you want an enum but can't define it as a Lua
+table, take a look at the [`@alias`](https://github.com/sumneko/lua-language-server/wiki/EmmyLua-Annotations#alias)
+tag.
+
+## Syntax
+`@enum <name>`
+
+## Usage
+```
+---@enum colors
+local colors = {
+	white = 0,
+	orange = 2,
+	yellow = 4,
+	green = 8,
+	black = 16,
+}
+
+---@param color colors
+local function setColor(color) end
+
+-- Completion and hover is provided for the below param
+setColor(colors.green)
+```
 ]=]

@@ -1,6 +1,7 @@
 local config = require 'config'
 
 config.add(nil, 'Lua.diagnostics.disable', 'unused-local')
+config.add(nil, 'Lua.diagnostics.disable', 'unused-function')
 config.add(nil, 'Lua.diagnostics.disable', 'undefined-global')
 
 TEST [[
@@ -635,8 +636,16 @@ TEST [[
 ---@class A
 local a = {}
 
----@class B: A
+---@class B
 local <!b!> = a
+]]
+
+TEST [[
+---@class A
+local a = {}
+
+---@class B: A
+local b = a
 ]]
 
 TEST [[
@@ -694,5 +703,77 @@ mt.x = 1
 mt.x = nil
 ]]
 
+TEST [[
+---@type string[]
+local t
+
+<!t!> = 'xxx'
+]]
+
+TEST [[
+---@param b boolean
+local function f(b)
+end
+
+---@type boolean
+local t
+
+if t then
+    f(t)
+end
+]]
+
+config.set(nil, 'Lua.type.weakUnionCheck', true)
+TEST [[
+---@type number
+local x = G
+]]
+
+TEST [[
+---@generic T
+---@param x T
+---@return T
+local function f(x)
+    return x
+end
+]]
+config.set(nil, 'Lua.type.weakUnionCheck', false)
+
+TEST [[
+---@type 1|2
+local x
+
+x = 1
+x = 2
+<!x!> = 3
+]]
+
+TEST [[
+---@type 'x'|'y'
+local x
+
+x = 'x'
+x = 'y'
+<!x!> = 'z'
+]]
+
+TEST [[
+---@enum A
+local t = {
+    x = 1,
+    y = 2,
+}
+
+---@param x A
+local function f(x)
+end
+
+f(<!t!>)
+f(t.x)
+f(1)
+f(<!3!>)
+]]
+
 config.remove(nil, 'Lua.diagnostics.disable', 'unused-local')
+config.remove(nil, 'Lua.diagnostics.disable', 'unused-function')
 config.remove(nil, 'Lua.diagnostics.disable', 'undefined-global')

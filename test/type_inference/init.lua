@@ -3391,3 +3391,349 @@ TEST 'unknown' [[
 mt = {}
 mt.<?x?> = nil
 ]]
+
+TEST 'A' [[
+---@class A
+---@operator unm: A
+
+---@type A
+local a
+local <?b?> = -a
+]]
+
+TEST 'A' [[
+---@class A
+---@operator bnot: A
+
+---@type A
+local a
+local <?b?> = ~a
+]]
+
+TEST 'A' [[
+---@class A
+---@operator len: A
+
+---@type A
+local a
+local <?b?> = #a
+]]
+
+TEST 'A' [[
+---@class A
+---@operator add: A
+
+---@type A
+local a
+local <?b?> = a + 1
+]]
+
+TEST 'A' [[
+---@class A
+---@operator sub: A
+
+---@type A
+local a
+local <?b?> = a - 1
+]]
+
+TEST 'A' [[
+---@class A
+---@operator mul: A
+
+---@type A
+local a
+local <?b?> = a * 1
+]]
+
+TEST 'A' [[
+---@class A
+---@operator div: A
+
+---@type A
+local a
+local <?b?> = a / 1
+]]
+
+TEST 'A' [[
+---@class A
+---@operator mod: A
+
+---@type A
+local a
+local <?b?> = a % 1
+]]
+
+TEST 'A' [[
+---@class A
+---@operator pow: A
+
+---@type A
+local a
+local <?b?> = a ^ 1
+]]
+
+TEST 'A' [[
+---@class A
+---@operator idiv: A
+
+---@type A
+local a
+local <?b?> = a // 1
+]]
+
+TEST 'A' [[
+---@class A
+---@operator band: A
+
+---@type A
+local a
+local <?b?> = a & 1
+]]
+
+TEST 'A' [[
+---@class A
+---@operator bor: A
+
+---@type A
+local a
+local <?b?> = a | 1
+]]
+
+TEST 'A' [[
+---@class A
+---@operator bxor: A
+
+---@type A
+local a
+local <?b?> = a ~ 1
+]]
+
+TEST 'A' [[
+---@class A
+---@operator shl: A
+
+---@type A
+local a
+local <?b?> = a << 1
+]]
+
+TEST 'A' [[
+---@class A
+---@operator shr: A
+
+---@type A
+local a
+local <?b?> = a >> 1
+]]
+
+TEST 'A' [[
+---@class A
+---@operator concat: A
+
+---@type A
+local a
+local <?b?> = a .. 1
+]]
+
+TEST 'A' [[
+---@class A
+---@operator add(boolean): boolean
+---@operator add(integer): A
+
+---@type A
+local a
+local <?b?> = a + 1
+]]
+
+TEST 'boolean' [[
+---@class A
+---@operator add(boolean): boolean
+---@operator add(integer): A
+
+---@type A
+local a
+local <?b?> = a + true
+]]
+
+TEST 'A' [[
+---@class A
+---@operator call: A
+
+---@type A
+local a
+local <?b?> = a()
+]]
+
+TEST 'A' [[
+---@class A
+---@operator call: A
+
+---@type A
+local a
+
+local t = {
+    <?x?> = a(),
+}
+]]
+
+TEST 'boolean' [[
+---@class A
+---@field n number
+---@field [string] boolean
+local t
+
+local <?x?> = t.xx
+]]
+
+TEST 'number' [[
+---@class A
+---@field n number
+---@field [string] boolean
+local t
+
+local <?x?> = t.n
+]]
+
+TEST 'string' [[
+---@class string
+---@operator mod: string
+
+local <?b?> = '' % 1
+]]
+
+TEST 'string|integer' [[
+---@type boolean
+local bool
+
+local <?x?> = bool and '' or 0
+]]
+
+TEST 'string|integer' [[
+local bool
+
+if X then
+    bool = true
+else
+    bool = false
+end
+
+local <?x?> = bool and '' or 0
+]]
+
+TEST 'boolean' [[
+---@type boolean|true|false
+local <?b?>
+]]
+
+TEST 'integer|false' [[
+local <?b?> = X == 1 and X == 1 and 1
+]]
+
+TEST 'unknown|nil' [[
+local function f()
+    if X then
+        return ({})[1]
+    end
+    return nil
+end
+
+local <?n?> = f()
+]]
+
+TEST 'integer' [[
+---@generic T
+---@vararg T # ERROR
+---@return T
+local function test(...)
+    return ...
+end
+
+local <?n?> = test(1)
+]]
+
+TEST 'boolean' [[
+---@type boolean, number
+local <?x?>, y
+]]
+
+TEST 'number' [[
+---@type boolean, number
+local x, <?y?>
+]]
+
+TEST 'unknown' [[
+---@type _, number
+local <?x?>, y
+]]
+
+TEST 'number[]' [[
+local t
+---@cast t number[]?
+
+local x = t and <?t?>[i]
+]]
+
+TEST 'number?' [[
+---@type number[]?
+local t
+
+local <?x?> = t and t[i]
+]]
+
+TEST 'number' [[
+---@type number
+local x
+
+if not <?x?>.y then
+    x = nil
+end
+]]
+
+TEST 'number' [[
+---@type number|nil
+local x
+while x == nil do
+    if x == nil then
+        return
+    end
+
+    x = nil
+end
+
+print(<?x?>)
+]]
+
+TEST 'integer' [[
+local A = {
+    ---@class XXX
+    B = {}
+}
+
+A.B.C = 1
+
+print(A.B.<?C?>)
+]]
+
+TEST '-2|-3|1' [[
+---@type 1|-2|-3
+local <?n?>
+]]
+
+TEST 'table' [[
+---@enum A
+local m = {}
+
+print(<?m?>)
+]]
+
+TEST 'A' [[
+---@class A
+---@overload fun():A
+local m = {}
+
+---@return A
+function m:init()
+    return <?self?>
+end
+]]

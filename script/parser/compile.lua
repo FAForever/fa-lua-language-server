@@ -12,11 +12,9 @@ local uchar      = utf8.char
 local tconcat    = table.concat
 local tinsert    = table.insert
 local tointeger  = math.tointeger
-local mtype      = math.type
 local tonumber   = tonumber
 local maxinteger = math.maxinteger
 local assert     = assert
-local next       = next
 
 _ENV = nil
 
@@ -2689,7 +2687,6 @@ local function parseVarTails(parser, isLocal)
     end
     if isLocal then
         createLocal(second, parseLocalAttrs())
-        second.effect = maxinteger
     end
     skipSpace()
     if Tokens[Index + 1] ~= ',' then
@@ -2704,7 +2701,6 @@ local function parseVarTails(parser, isLocal)
     end
     if isLocal then
         createLocal(third, parseLocalAttrs())
-        third.effect = maxinteger
     end
     local rest = { third }
     while true do
@@ -2721,7 +2717,6 @@ local function parseVarTails(parser, isLocal)
         end
         if isLocal then
             createLocal(name, parseLocalAttrs())
-            name.effect = maxinteger
         end
         rest[#rest+1] = name
     end
@@ -2729,7 +2724,6 @@ end
 
 local function bindValue(n, v, index, lastValue, isLocal, isSet)
     if isLocal then
-        n.effect = lastRightPosition()
         if v and v.special then
             addSpecial(v.special, n)
         end
@@ -2775,9 +2769,6 @@ local function bindValue(n, v, index, lastValue, isLocal, isSet)
         n.value  = v
         n.range  = v.finish
         v.parent = n
-        if isLocal then
-            n.effect = lastRightPosition()
-        end
     end
 end
 
@@ -2797,6 +2788,7 @@ function parseMultiVars(n1, parser, isLocal)
     local index = 1
     bindValue(n1, v1, index, nil, isLocal, isSet)
     local lastValue = v1
+    local lastVar   = n1
     if n2 then
         max = 2
         if not v2 then
@@ -2804,6 +2796,7 @@ function parseMultiVars(n1, parser, isLocal)
         end
         bindValue(n2, v2, index, lastValue, isLocal, isSet)
         lastValue = v2 or lastValue
+        lastVar   = n2
         pushActionIntoCurrentChunk(n2)
     end
     if nrest then
@@ -2816,7 +2809,21 @@ function parseMultiVars(n1, parser, isLocal)
             end
             bindValue(n, v, index, lastValue, isLocal, isSet)
             lastValue = v or lastValue
+            lastVar   = n
             pushActionIntoCurrentChunk(n)
+        end
+    end
+
+    if isLocal then
+        local effect = lastValue and lastValue.finish or lastVar.finish
+        n1.effect = effect
+        if n2 then
+            n2.effect = effect
+        end
+        if nrest then
+            for i = 1, #nrest do
+                nrest[i].effect = effect
+            end
         end
     end
 
@@ -2847,7 +2854,16 @@ local function compileExpAsAction(exp)
     pushActionIntoCurrentChunk(exp)
     if GetToSetMap[exp.type] then
         skipSpace()
-        local action, isSet = parseMultiVars(exp, parseExp)
+        local isLocal
+        if exp.type == 'getlocal' and exp[1] == State.ENVMode then
+            exp.special = nil
+            local loc = createLocal(exp, parseLocalAttrs())
+            loc.locPos = exp.start
+            loc.effect = maxinteger
+            isLocal = true
+            skipSpace()
+        end
+        local action, isSet = parseMultiVars(exp, parseExp, isLocal)
         if isSet
         or action.type == 'getmethod' then
             return action
@@ -2941,11 +2957,6 @@ local function parseLocal()
     pushActionIntoCurrentChunk(loc)
     skipSpace()
     parseMultiVars(loc, parseName, true)
-    if loc.value then
-        loc.effect = loc.value.finish
-    else
-        loc.effect = loc.finish
-    end
 
     return loc
 end
@@ -3894,6 +3905,7 @@ local function initState(lua, version, options)
     Tokens              = tokens(lua)
     Index               = 1
     ---@class parser.state
+    ---@field uri uri
     local state = {
         version = version,
         lua     = lua,

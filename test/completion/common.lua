@@ -2012,6 +2012,7 @@ zz<??>
 ```
 
 ---
+
  abc]],
     }
 }
@@ -3632,5 +3633,67 @@ local t = {
         label    = "'bbb'",
         kind     = define.CompletionItemKind.EnumMember,
         textEdit = EXISTS,
+    },
+}
+
+TEST [[
+---@enum A
+T = {
+    x = 1,
+    y = 'ss',
+}
+
+---@param x A
+local function f(x) end
+
+f(<??>)
+]]
+{
+    {
+        label    = 'T.x',
+        kind     = define.CompletionItemKind.EnumMember,
+    },
+    {
+        label    = 'T.y',
+        kind     = define.CompletionItemKind.EnumMember,
+    },
+    {
+        label    = '1',
+        kind     = define.CompletionItemKind.EnumMember,
+    },
+    {
+        label    = '"ss"',
+        kind     = define.CompletionItemKind.EnumMember,
+    },
+}
+
+TEST [[
+---@enum A
+local ppp = {
+    x = 1,
+    y = 'ss',
+}
+
+---@param x A
+local function f(x) end
+
+f(<??>)
+]]
+{
+    {
+        label    = 'ppp.x',
+        kind     = define.CompletionItemKind.EnumMember,
+    },
+    {
+        label    = 'ppp.y',
+        kind     = define.CompletionItemKind.EnumMember,
+    },
+    {
+        label    = '1',
+        kind     = define.CompletionItemKind.EnumMember,
+    },
+    {
+        label    = '"ss"',
+        kind     = define.CompletionItemKind.EnumMember,
     },
 }

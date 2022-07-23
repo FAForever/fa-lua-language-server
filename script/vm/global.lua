@@ -42,6 +42,7 @@ function mt:addGet(uri, source)
     self.getsCache = nil
 end
 
+---@param suri  uri
 ---@return parser.object[]
 function mt:getSets(suri)
     if not self.setsCache then
@@ -129,6 +130,7 @@ end
 
 ---@class parser.object
 ---@field _globalNode vm.global|false
+---@field _enums?     (string|integer)[]
 
 ---@type table<string, vm.global>
 local allGlobals = {}
@@ -318,10 +320,47 @@ local compilerGlobalSwitch = util.switch()
             source.extends._generic = vm.createGeneric(source.extends, source._sign)
         end
     end)
+    : case 'doc.enum'
+    : call(function (source)
+        local uri  = guide.getUri(source)
+        local name = guide.getKeyName(source)
+        if not name then
+            return
+        end
+        local enum = vm.declareGlobal('type', name, uri)
+        enum:addSet(uri, source)
+        source._globalNode = enum
+
+        local tbl = source.bindSource
+        if not tbl then
+            return
+        end
+        source._enums = {}
+        for _, field in ipairs(tbl) do
+            if field.type == 'tablefield'
+            or field.type == 'tableindex' then
+                if not field.value then
+                    goto CONTINUE
+                end
+                local key = guide.getKeyName(field)
+                if not key then
+                    goto CONTINUE
+                end
+                if field.value.type == 'integer'
+                or field.value.type == 'string' then
+                    source._enums[#source._enums+1] = field.value[1]
+                end
+                ::CONTINUE::
+            end
+        end
+    end)
     : case 'doc.type.name'
     : call(function (source)
         local uri  = guide.getUri(source)
         local name = source[1]
+        if name == '_' then
+            return
+        end
         local type = vm.declareGlobal('type', name, uri)
         type:addGet(uri, source)
         source._globalNode = type
@@ -504,6 +543,7 @@ local function compileAst(source)
         'doc.alias',
         'doc.type.name',
         'doc.extends.name',
+        'doc.enum',
     }, function (src)
         compileObject(src)
     end)

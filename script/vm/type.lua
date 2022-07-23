@@ -2,6 +2,7 @@
 local vm        = require 'vm.vm'
 local guide     = require 'parser.guide'
 local config    = require 'config.config'
+local util      = require 'utility'
 
 ---@param object vm.node.object
 ---@return string?
@@ -40,6 +41,54 @@ local function getNodeName(object)
     return nil
 end
 
+---@param parentName string
+---@param child      vm.node.object
+---@param uri        uri
+---@return boolean?
+local function checkEnum(parentName, child, uri)
+    local parentClass = vm.getGlobal('type', parentName)
+    if not parentClass then
+        return nil
+    end
+    for _, set in ipairs(parentClass:getSets(uri)) do
+        if set.type == 'doc.enum' then
+            if not set._enums then
+                return false
+            end
+            if  child.type ~= 'string'
+            and child.type ~= 'doc.type.string'
+            and child.type ~= 'integer'
+            and child.type ~= 'number'
+            and child.type ~= 'doc.type.integer' then
+                return false
+            end
+            return util.arrayHas(set._enums, child[1])
+        end
+    end
+
+    return nil
+end
+
+---@param parent vm.node.object
+---@param child  vm.node.object
+---@return boolean
+local function checkValue(parent, child)
+    if parent.type == 'doc.type.integer' then
+        if child.type == 'integer'
+        or child.type == 'doc.type.integer'
+        or child.type == 'number' then
+            return parent[1] == child[1]
+        end
+    elseif parent.type == 'doc.type.string' then
+        if child.type == 'string'
+        or child.type == 'doc.type.string' then
+            return parent[1] == child[1]
+        end
+    end
+
+    return true
+end
+
 ---@param uri uri
 ---@param child  vm.node|string|vm.node.object
 ---@param parent vm.node|string|vm.node.object
@@ -56,13 +105,16 @@ function vm.isSubType(uri, child, parent, mark)
         child = global
     elseif child.type == 'vm.node' then
         if config.get(uri, 'Lua.type.weakUnionCheck') then
+            local hasKnownType
             for n in child:eachObject() do
-                if  getNodeName(n)
-                and vm.isSubType(uri, n, parent, mark) then
-                    return true
+                if getNodeName(n) then
+                    hasKnownType = true
+                    if vm.isSubType(uri, n, parent, mark) then
+                        return true
+                    end
                 end
             end
-            return false
+            return not hasKnownType
         else
             local weakNil   = config.get(uri, 'Lua.type.weakNilCheck')
             for n in child:eachObject() do
@@ -121,6 +173,9 @@ function vm.isSubType(uri, child, parent, mark)
     end
 
     if childName == parentName then
+        if not checkValue(parent, child) then
+            return false
+        end
         return true
     end
 
@@ -144,6 +199,11 @@ function vm.isSubType(uri, child, parent, mark)
         return true
     end
 
+    local isEnum = checkEnum(parentName, child, uri)
+    if isEnum ~= nil then
+        return isEnum
+    end
+
     -- TODO: check duck
     if parentName == 'table' and not guide.isBasicType(childName) then
         return true
@@ -155,18 +215,21 @@ function vm.isSubType(uri, child, parent, mark)
     -- check class parent
     if childName and not mark[childName] then
         mark[childName] = true
+        local isBasicType = guide.isBasicType(childName)
         local childClass = vm.getGlobal('type', childName)
         if childClass then
             for _, set in ipairs(childClass:getSets(uri)) do
                 if set.type == 'doc.class' and set.extends then
                     for _, ext in ipairs(set.extends) do
                         if  ext.type == 'doc.extends.name'
+                        and (not isBasicType or guide.isBasicType(ext[1]))
                         and vm.isSubType(uri, ext[1], parent, mark) then
                             return true
                         end
                     end
                 end
-                if set.type == 'doc.alias' then
+                if set.type == 'doc.alias'
+                or set.type == 'doc.enum' then
                     return true
                 end
             end
@@ -320,6 +383,9 @@ function vm.canCastType(uri, defNode, refNode)
         return true
     end
     if defInfer:view(uri) == 'unknown' then
+        return true
+    end
+    if refInfer:view(uri) == 'unknown' then
         return true
     end
 

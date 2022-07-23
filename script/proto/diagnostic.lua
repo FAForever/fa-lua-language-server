@@ -47,6 +47,7 @@ m.register {
     'redundant-return',
     'empty-block',
     'code-after-break',
+    'unreachable-code',
 } {
     group    = 'unused',
     severity = 'Hint',
@@ -93,6 +94,7 @@ m.register {
     'unknown-diag-code',
     'unknown-cast-variable',
     'cast-type-mismatch',
+    'unknown-operator',
 } {
     group    = 'luadoc',
     severity = 'Warning',

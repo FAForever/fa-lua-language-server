@@ -21,6 +21,8 @@ local furi       = require 'file-uri'
 local inspect    = require 'inspect'
 local markdown   = require 'provider.markdown'
 local guide      = require 'parser.guide'
+local fs         = require 'bee.filesystem'
+local jumpSource = require 'core.jump-source'
 
 local configLoaded = false
 ---@async
@@ -151,7 +153,6 @@ m.register 'initialized'{
             })
         end
         client.setReady()
-        library.init()
         workspace.init()
         return true
     end
@@ -232,6 +233,29 @@ m.register 'workspace/didRenameFiles' {
                     end
                 end
             end
+        end
+    end
+}
+
+m.register 'workspace/didChangeWorkspaceFolders' {
+    capability = {
+        workspace = {
+            workspaceFolders = {
+                supported = true,
+                changeNotifications = true,
+            },
+        },
+    },
+    ---@async
+    function (params)
+        log.debug('workspace/didChangeWorkspaceFolders', inspect(params))
+        for _, folder in ipairs(params.event.added) do
+            workspace.create(folder.uri)
+            updateConfig()
+            workspace.reload(scope.getScope(folder.uri))
+        end
+        for _, folder in ipairs(params.event.removed) do
+            workspace.remove(folder.uri)
         end
     end
 }
@@ -365,18 +389,16 @@ m.register 'textDocument/definition' {
         for i, info in ipairs(result) do
             local targetUri = info.uri
             if targetUri then
-                if files.exists(targetUri) then
-                    if client.getAbility 'textDocument.definition.linkSupport' then
-                        response[i] = converter.locationLink(targetUri
-                            , converter.packRange(targetUri, info.target.start, info.target.finish)
-                            , converter.packRange(targetUri, info.target.start, info.target.finish)
-                            , converter.packRange(uri,       info.source.start, info.source.finish)
-                        )
-                    else
-                        response[i] = converter.location(targetUri
-                            , converter.packRange(targetUri, info.target.start, info.target.finish)
-                        )
-                    end
+                if client.getAbility 'textDocument.definition.linkSupport' then
+                    response[i] = converter.locationLink(targetUri
+                        , converter.packRange(targetUri, info.target.start, info.target.finish)
+                        , converter.packRange(targetUri, info.target.start, info.target.finish)
+                        , converter.packRange(uri,       info.source.start, info.source.finish)
+                    )
+                else
+                    response[i] = converter.location(targetUri
+                        , converter.packRange(targetUri, info.target.start, info.target.finish)
+                    )
                 end
             end
         end
@@ -407,18 +429,16 @@ m.register 'textDocument/typeDefinition' {
         for i, info in ipairs(result) do
             local targetUri = info.uri
             if targetUri then
-                if files.exists(targetUri) then
-                    if client.getAbility 'textDocument.typeDefinition.linkSupport' then
-                        response[i] = converter.locationLink(targetUri
-                            , converter.packRange(targetUri, info.target.start, info.target.finish)
-                            , converter.packRange(targetUri, info.target.start, info.target.finish)
-                            , converter.packRange(uri,       info.source.start, info.source.finish)
-                        )
-                    else
-                        response[i] = converter.location(targetUri
-                            , converter.packRange(targetUri, info.target.start, info.target.finish)
-                        )
-                    end
+                if client.getAbility 'textDocument.typeDefinition.linkSupport' then
+                    response[i] = converter.locationLink(targetUri
+                        , converter.packRange(targetUri, info.target.start, info.target.finish)
+                        , converter.packRange(targetUri, info.target.start, info.target.finish)
+                        , converter.packRange(uri,       info.source.start, info.source.finish)
+                    )
+                else
+                    response[i] = converter.location(targetUri
+                        , converter.packRange(targetUri, info.target.start, info.target.finish)
+                    )
                 end
             end
         end
@@ -1013,6 +1033,40 @@ m.register 'textDocument/foldingRange' {
     end
 }
 
+m.register 'textDocument/documentColor' {
+    capability = {
+        colorProvider = true
+    },
+    ---@async
+    function (params)
+        local color = require 'core.color'
+        local uri     = files.getRealUri(params.textDocument.uri)
+        workspace.awaitReady(uri)
+        if not files.exists(uri) then
+            return nil
+        end
+        local colors = color.colors(uri)
+        if not colors then
+            return nil
+        end
+        local results = {}
+        for _, colorValue in ipairs(colors) do
+            results[#results+1] = {
+                range = converter.packRange(uri, colorValue.start, colorValue.finish),
+                color = colorValue.color
+            }
+        end
+        return results
+    end
+}
+
+m.register 'textDocument/colorPresentation' {
+    function (params)
+        local color = (require 'core.color').colorToText(params.color)
+        return {{label = color}}
+    end
+}
+
 m.register 'window/workDoneProgress/cancel' {
     function (params)
         log.debug('close proto(cancel):', params.token)
@@ -1325,6 +1379,35 @@ m.register 'workspace/diagnostic' {
             })
         end)
         return { items = {} }
+    end
+}
+
+m.register '$/api/report' {
+    ---@async
+    function (params)
+        local buildMeta = require 'provider.build-meta'
+        local SDBMHash  = require 'SDBMHash'
+        await.close 'api/report'
+        await.setID 'api/report'
+        local name = params.name or 'default'
+        local uri  = workspace.getFirstScope().uri
+        local hash = uri and ('%08x'):format(SDBMHash():hash(uri))
+        local encoding = config.get(nil, 'Lua.runtime.fileEncoding')
+        local nameBuf = {}
+        nameBuf[#nameBuf+1] = name
+        nameBuf[#nameBuf+1] = hash
+        nameBuf[#nameBuf+1] = encoding
+        local fileDir = METAPATH .. '/' ..  table.concat(nameBuf, ' ')
+        fs.create_directories(fs.path(fileDir))
+        buildMeta.build(fileDir, params)
+        client.setConfig {
+            {
+                key    = 'Lua.workspace.library',
+                action = 'add',
+                value  = fileDir,
+                uri    = uri,
+            }
+        }
     end
 }
 

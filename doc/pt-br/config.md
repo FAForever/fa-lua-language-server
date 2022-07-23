@@ -188,99 +188,101 @@ Array<string>
 
 ## enum
 
-* ``"not-yieldable"``
-* ``"redundant-parameter"``
-* ``"break-outside"``
-* ``"undefined-doc-class"``
-* ``"unknown-symbol"``
-* ``"miss-method"``
-* ``"err-nonstandard-symbol"``
-* ``"unknown-attribute"``
-* ``"unexpect-efunc-name"``
-* ``"different-requires"``
-* ``"miss-end"``
-* ``"await-in-sync"``
-* ``"args-after-dots"``
-* ``"err-eq-as-assign"``
-* ``"newfield-call"``
-* ``"err-assign-as-eq"``
-* ``"undefined-doc-param"``
-* ``"param-type-mismatch"``
-* ``"global-in-nil-env"``
-* ``"missing-parameter"``
-* ``"miss-sep-in-table"``
-* ``"unknown-cast-variable"``
-* ``"miss-loop-min"``
-* ``"malformed-number"``
-* ``"err-do-as-then"``
-* ``"spell-check"``
-* ``"undefined-env-child"``
-* ``"missing-return-value"``
-* ``"discard-returns"``
-* ``"redundant-return"``
-* ``"miss-esc-x"``
-* ``"redundant-value"``
-* ``"duplicate-doc-alias"``
-* ``"doc-field-no-class"``
-* ``"no-visible-label"``
-* ``"miss-exp"``
-* ``"miss-loop-max"``
-* ``"miss-name"``
-* ``"empty-block"``
-* ``"unused-local"``
-* ``"err-then-as-do"``
-* ``"duplicate-doc-field"``
-* ``"redefined-label"``
-* ``"exp-in-action"``
-* ``"set-const"``
-* ``"circle-doc-class"``
-* ``"unexpect-lfunc-name"``
-* ``"unsupport-symbol"``
-* ``"unused-label"``
 * ``"action-after-return"``
-* ``"unexpect-dots"``
-* ``"newline-call"``
-* ``"jump-local-scope"``
-* ``"close-non-object"``
-* ``"miss-field"``
-* ``"count-down-loop"``
-* ``"cast-type-mismatch"``
-* ``"duplicate-index"``
-* ``"unexpect-symbol"``
-* ``"block-after-else"``
-* ``"unicode-name"``
-* ``"miss-exponent"``
-* ``"err-esc"``
-* ``"redundant-return-value"``
-* ``"unbalanced-assignments"``
-* ``"err-c-long-comment"``
-* ``"undefined-doc-name"``
 * ``"ambiguity-1"``
-* ``"trailing-space"``
-* ``"deprecated"``
-* ``"codestyle-check"``
-* ``"missing-return"``
-* ``"undefined-global"``
-* ``"unused-function"``
-* ``"code-after-break"``
+* ``"args-after-dots"``
 * ``"assign-type-mismatch"``
-* ``"local-limit"``
+* ``"await-in-sync"``
+* ``"block-after-else"``
+* ``"break-outside"``
 * ``"cast-local-type"``
-* ``"need-check-nil"``
-* ``"keyword"``
-* ``"unknown-diag-code"``
-* ``"unused-vararg"``
-* ``"err-comment-prefix"``
-* ``"lowercase-global"``
-* ``"return-type-mismatch"``
-* ``"duplicate-set-field"``
-* ``"redefined-local"``
-* ``"no-unknown"``
+* ``"cast-type-mismatch"``
+* ``"circle-doc-class"``
+* ``"close-non-object"``
+* ``"code-after-break"``
+* ``"codestyle-check"``
+* ``"count-down-loop"``
+* ``"deprecated"``
+* ``"different-requires"``
+* ``"discard-returns"``
+* ``"doc-field-no-class"``
+* ``"duplicate-doc-alias"``
+* ``"duplicate-doc-field"``
 * ``"duplicate-doc-param"``
+* ``"duplicate-index"``
+* ``"duplicate-set-field"``
+* ``"empty-block"``
+* ``"err-assign-as-eq"``
+* ``"err-c-long-comment"``
+* ``"err-comment-prefix"``
+* ``"err-do-as-then"``
+* ``"err-eq-as-assign"``
+* ``"err-esc"``
+* ``"err-nonstandard-symbol"``
+* ``"err-then-as-do"``
+* ``"exp-in-action"``
+* ``"global-in-nil-env"``
 * ``"index-in-func-name"``
-* ``"miss-symbol"``
-* ``"undefined-field"``
+* ``"jump-local-scope"``
+* ``"keyword"``
+* ``"local-limit"``
+* ``"lowercase-global"``
+* ``"malformed-number"``
+* ``"miss-end"``
+* ``"miss-esc-x"``
+* ``"miss-exp"``
+* ``"miss-exponent"``
+* ``"miss-field"``
+* ``"miss-loop-max"``
+* ``"miss-loop-min"``
+* ``"miss-method"``
+* ``"miss-name"``
+* ``"miss-sep-in-table"``
 * ``"miss-space-between"``
+* ``"miss-symbol"``
+* ``"missing-parameter"``
+* ``"missing-return"``
+* ``"missing-return-value"``
+* ``"need-check-nil"``
+* ``"newfield-call"``
+* ``"newline-call"``
+* ``"no-unknown"``
+* ``"no-visible-label"``
+* ``"not-yieldable"``
+* ``"param-type-mismatch"``
+* ``"redefined-label"``
+* ``"redefined-local"``
+* ``"redundant-parameter"``
+* ``"redundant-return"``
+* ``"redundant-return-value"``
+* ``"redundant-value"``
+* ``"return-type-mismatch"``
+* ``"set-const"``
+* ``"spell-check"``
+* ``"trailing-space"``
+* ``"unbalanced-assignments"``
+* ``"undefined-doc-class"``
+* ``"undefined-doc-name"``
+* ``"undefined-doc-param"``
+* ``"undefined-env-child"``
+* ``"undefined-field"``
+* ``"undefined-global"``
+* ``"unexpect-dots"``
+* ``"unexpect-efunc-name"``
+* ``"unexpect-lfunc-name"``
+* ``"unexpect-symbol"``
+* ``"unicode-name"``
+* ``"unknown-attribute"``
+* ``"unknown-cast-variable"``
+* ``"unknown-diag-code"``
+* ``"unknown-operator"``
+* ``"unknown-symbol"``
+* ``"unreachable-code"``
+* ``"unsupport-symbol"``
+* ``"unused-function"``
+* ``"unused-label"``
+* ``"unused-local"``
+* ``"unused-vararg"``
 
 ## default
 
@@ -407,6 +409,7 @@ object<string, string>
     * undefined-doc-param
     * unknown-cast-variable
     * unknown-diag-code
+    * unknown-operator
     */
     "luadoc": "Fallback",
     /*
@@ -448,6 +451,7 @@ object<string, string>
     * empty-block
     * redundant-return
     * trailing-space
+    * unreachable-code
     * unused-function
     * unused-label
     * unused-local
@@ -524,6 +528,7 @@ object<string, string>
     * undefined-doc-param
     * unknown-cast-variable
     * unknown-diag-code
+    * unknown-operator
     */
     "luadoc": "Fallback",
     /*
@@ -565,6 +570,7 @@ object<string, string>
     * empty-block
     * redundant-return
     * trailing-space
+    * unreachable-code
     * unused-function
     * unused-label
     * unused-local
@@ -733,6 +739,8 @@ object<string, string>
     "undefined-global": "Any",
     "unknown-cast-variable": "Any",
     "unknown-diag-code": "Any",
+    "unknown-operator": "Any",
+    "unreachable-code": "Opened",
     /*
     未使用的函数
     */
@@ -867,6 +875,8 @@ object<string, string>
     "undefined-global": "Warning",
     "unknown-cast-variable": "Warning",
     "unknown-diag-code": "Warning",
+    "unknown-operator": "Warning",
+    "unreachable-code": "Hint",
     /*
     未使用的函数
     */
@@ -884,6 +894,22 @@ object<string, string>
     */
     "unused-vararg": "Hint"
 }
+```
+
+# diagnostics.unusedLocalExclude
+
+Do not diagnose `unused-local` when the variable name matches the following pattern.
+
+## type
+
+```ts
+Array<string>
+```
+
+## default
+
+```jsonc
+[]
 ```
 
 # diagnostics.workspaceDelay
@@ -1250,6 +1276,8 @@ object<string, string>
     "package": "default",
     "string": "default",
     "table": "default",
+    "table.clear": "default",
+    "table.new": "default",
     "utf8": "default"
 }
 ```

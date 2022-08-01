@@ -3837,19 +3837,22 @@ local function parseLua()
 
     -- create a fake table and use that as the return value
     if State.hasExportEnv then
+        local fakeExportForFa = 'fakeExportForFa'
         local index = 0
         --- @type vm.node
         local returnNode = {
             type = 'return',
             parent = main,
             start = -1,
-            finish = -1
+            finish = -1,
+            generatedBy = fakeExportForFa
         }
         local tmpTable = {
             type = 'table',
             parent = returnNode,
             start = -1,
-            finish = -1
+            finish = -1,
+            generatedBy = fakeExportForFa
         }
         returnNode[1] = tmpTable
         for var in values(main) do
@@ -3857,16 +3860,20 @@ local function parseLua()
                 local varName = var[1]
                 local field = {
                     type = 'field',
-                    start = -1,
-                    finish = -1,
-                    [1] = varName
+                    -- start = -1,
+                    -- finish = -1,
+                    start = var.start,
+                    finish = var.finish,
+                    [1] = varName,
+                    generatedBy = fakeExportForFa
                 }
                 local value = {
                     type = 'getlocal',
                     start = -1,
                     finish = -1,
                     node = var,
-                    [1] = varName
+                    [1] = varName,
+                    generatedBy = fakeExportForFa
                 }
                 if not var.ref then var.ref = {} end
                 var.ref[#var.ref+1] = value
@@ -3876,8 +3883,10 @@ local function parseLua()
                     start = var.start,
                     finish = var.finish,
                     parent = tmpTable,
+                    node = tmpTable,
                     field = field,
-                    value = value
+                    value = value,
+                    generatedBy = fakeExportForFa
                 }
                 field.parent = tableField
                 value.parent = tableField
@@ -3889,7 +3898,7 @@ local function parseLua()
 
         local returns = { [1] = returnNode }
         main.returns = returns
-        -- main[#main+1] = returnNode
+        main[#main+1] = returnNode
     end
 
     return main

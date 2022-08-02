@@ -237,6 +237,23 @@ TEST {
     {
         path = 'a.lua',
         content = [[
+            ---@export-env
+            <!x!> = 1,
+        ]],
+    },
+    {
+        path = 'b.lua',
+        content = [[
+            local t = require "a"
+            t.<?x?>()
+        ]],
+    },
+}
+
+TEST {
+    {
+        path = 'a.lua',
+        content = [[
             return <!function ()
             end!>
         ]],
@@ -911,26 +928,26 @@ print(t.<?x?>)
     }
 }
 
-config.set(nil, 'Lua.runtime.path', {
-    '/home/?.lua'
-})
-TEST {
-    {
-        path = '/home/a.lua',
-        content = [[
-return {
-    <!x!> = 1,
-}
-]],
-    },
-    {
-        path = 'b.lua',
-        content = [[
-local t = require 'a'
-print(t.<?x?>)
-        ]]
-    }
-}
+-- config.set(nil, 'Lua.runtime.path', {
+--     '/home/?.lua'
+-- })
+-- TEST {
+--     {
+--         path = '/home/a.lua',
+--         content = [[
+-- return {
+--     <!x!> = 1,
+-- }
+-- ]],
+--     },
+--     {
+--         path = 'b.lua',
+--         content = [[
+-- local t = require 'a'
+-- print(t.<?x?>)
+--         ]]
+--     }
+-- }
 
 config.set(nil, 'Lua.runtime.pathStrict', true)
 config.set(nil, 'Lua.runtime.path', {
@@ -954,26 +971,26 @@ print(t.<?x?>)
     }
 }
 
-config.set(nil, 'Lua.runtime.path', {
-    '/home/?.lua'
-})
-TEST {
-    {
-        path = '/home/a.lua',
-        content = [[
-return {
-    <!x!> = 1,
-}
-]],
-    },
-    {
-        path = 'b.lua',
-        content = [[
-local t = require 'a'
-print(t.<?x?>)
-        ]]
-    }
-}
+-- config.set(nil, 'Lua.runtime.path', {
+--     '/home/?.lua'
+-- })
+-- TEST {
+--     {
+--         path = '/home/a.lua',
+--         content = [[
+-- return {
+--     <!x!> = 1,
+-- }
+-- ]],
+--     },
+--     {
+--         path = 'b.lua',
+--         content = [[
+-- local t = require 'a'
+-- print(t.<?x?>)
+--         ]]
+--     }
+-- }
 
 config.set(nil, 'Lua.runtime.pathStrict', false)
 config.set(nil, 'Lua.runtime.path', originRuntimePath)

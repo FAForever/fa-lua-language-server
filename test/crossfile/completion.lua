@@ -465,6 +465,42 @@ TEST {
     {
         path = 'a.lua',
         content = [[
+            ---@export-env
+            a = 1
+            function b(arg)
+                return 'str'
+            end
+            c = 'test'
+        ]]
+    },
+    {
+        path = 'b.lua',
+        content = [[
+            local t = require 'a'
+            t.<??>
+        ]],
+        main = true,
+    },
+    completion = {
+        {
+            label = 'a',
+            kind = CompletionItemKind.Field,
+        },
+        {
+            label = 'b',
+            kind = CompletionItemKind.Field,
+        },
+        {
+            label = 'c',
+            kind = CompletionItemKind.Field,
+        },
+    }
+}
+
+TEST {
+    {
+        path = 'a.lua',
+        content = [[
             zabc = 1
         ]]
     },

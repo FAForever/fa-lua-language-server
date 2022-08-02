@@ -3860,10 +3860,8 @@ local function parseLua()
                 local varName = var[1]
                 local field = {
                     type = 'field',
-                    -- start = -1,
-                    -- finish = -1,
-                    start = var.start,
-                    finish = var.finish,
+                    start = -1,
+                    finish = -1,
                     [1] = varName,
                     generatedBy = fakeExportForFa
                 }
@@ -3880,8 +3878,8 @@ local function parseLua()
                 
                 local tableField = {
                     type = 'tablefield',
-                    start = var.start,
-                    finish = var.finish,
+                    start = -1,
+                    finish = -1,
                     parent = tmpTable,
                     node = tmpTable,
                     field = field,

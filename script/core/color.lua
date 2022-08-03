@@ -144,6 +144,10 @@ local enumColors = {
     YellowGreen = "9CCF31",
     transparent = "00000000"
 }
+local colorToEnumLookup = {}
+for enumName, colorString in pairs(enumColors) do
+    colorToEnumLookup[colorString] = enumName
+end
 local colorPattern = string.rep("%x", 8)
 
 ---@param colorText string
@@ -185,10 +189,9 @@ local function colorToText(color)
             math.floor(color.blue  * 255)
         )
     end
-    for enum, enumCol in pairs(enumColors) do
-        if text == enumCol then
-            return enum
-        end
+    local enumName = colorToEnumLookup[text]
+    if enumName then
+        return enumName
     end
     return text
 end

@@ -146,6 +146,40 @@ TEST {
 
 config.set(nil, 'Lua.runtime.pathStrict', false)
 
+--FA test
+local originSeparator = config.get(nil, 'Lua.completion.requireSeparator')
+config.set(nil, 'Lua.completion.requireSeparator', '/')
+local originRuntimePath = config.get(nil, 'Lua.runtime.path')
+config.set(nil, 'Lua.runtime.path', {
+    '/?',
+})
+
+TEST {
+    {
+        path = '/lua/Test.lua',
+        content = '<!!>',
+    },
+    {
+        path = 'a.lua',
+        content = 'require "<?/lua/Test.lua?>"',
+    }
+}
+
+-- lower case matching upper case test
+TEST {
+    {
+        path = '/lua/Test.lua',
+        content = '<!!>',
+    },
+    {
+        path = 'a.lua',
+        content = 'require "<?/lua/test.lua?>"',
+    }
+}
+
+config.set(nil, 'Lua.runtime.path', originRuntimePath)
+config.set(nil, 'Lua.completion.requireSeparator', originSeparator)
+
 TEST {
     {
         path = 'a.lua',
@@ -222,6 +256,24 @@ TEST {
             return {
                 <!x!> = 1,
             }
+        ]],
+    },
+    {
+        path = 'b.lua',
+        content = [[
+            local t = require "a"
+            t.<?x?>()
+        ]],
+    },
+}
+
+--FA test
+TEST {
+    {
+        path = 'a.lua',
+        content = [[
+            ---@export-env
+            <!x!> = 1,
         ]],
     },
     {
@@ -911,26 +963,26 @@ print(t.<?x?>)
     }
 }
 
-config.set(nil, 'Lua.runtime.path', {
-    '/home/?.lua'
-})
-TEST {
-    {
-        path = '/home/a.lua',
-        content = [[
-return {
-    <!x!> = 1,
-}
-]],
-    },
-    {
-        path = 'b.lua',
-        content = [[
-local t = require 'a'
-print(t.<?x?>)
-        ]]
-    }
-}
+-- config.set(nil, 'Lua.runtime.path', {
+--     '/home/?.lua'
+-- })
+-- TEST {
+--     {
+--         path = '/home/a.lua',
+--         content = [[
+-- return {
+--     <!x!> = 1,
+-- }
+-- ]],
+--     },
+--     {
+--         path = 'b.lua',
+--         content = [[
+-- local t = require 'a'
+-- print(t.<?x?>)
+--         ]]
+--     }
+-- }
 
 config.set(nil, 'Lua.runtime.pathStrict', true)
 config.set(nil, 'Lua.runtime.path', {
@@ -954,26 +1006,26 @@ print(t.<?x?>)
     }
 }
 
-config.set(nil, 'Lua.runtime.path', {
-    '/home/?.lua'
-})
-TEST {
-    {
-        path = '/home/a.lua',
-        content = [[
-return {
-    <!x!> = 1,
-}
-]],
-    },
-    {
-        path = 'b.lua',
-        content = [[
-local t = require 'a'
-print(t.<?x?>)
-        ]]
-    }
-}
+-- config.set(nil, 'Lua.runtime.path', {
+--     '/home/?.lua'
+-- })
+-- TEST {
+--     {
+--         path = '/home/a.lua',
+--         content = [[
+-- return {
+--     <!x!> = 1,
+-- }
+-- ]],
+--     },
+--     {
+--         path = 'b.lua',
+--         content = [[
+-- local t = require 'a'
+-- print(t.<?x?>)
+--         ]]
+--     }
+-- }
 
 config.set(nil, 'Lua.runtime.pathStrict', false)
 config.set(nil, 'Lua.runtime.path', originRuntimePath)

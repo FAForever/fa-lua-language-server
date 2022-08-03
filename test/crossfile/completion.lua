@@ -426,6 +426,36 @@ TEST {
 
 config.set(nil, 'Lua.runtime.path', originRuntimePath)
 
+--FA tests
+local originSeparator = config.get(nil, 'Lua.completion.requireSeparator')
+config.set(nil, 'Lua.completion.requireSeparator', '/')
+local originRuntimePath = config.get(nil, 'Lua.runtime.path')
+config.set(nil, 'Lua.runtime.path', {
+    '/?',
+})
+
+TEST {
+    {
+        path = '/lua/Test.lua',
+        content = '',
+    },
+    {
+        path = 'main.lua',
+        content = 'require "<??>"',
+        main = true,
+    },
+    completion = {
+        {
+            label = '/lua/Test.lua',
+            kind = CompletionItemKind.File,
+            textEdit = EXISTS,
+        },
+    }
+}
+
+config.set(nil, 'Lua.runtime.path', originRuntimePath)
+config.set(nil, 'Lua.completion.requireSeparator', originSeparator)
+
 TEST {
     {
         path = 'a.lua',
@@ -453,6 +483,43 @@ TEST {
         {
             label = 'b',
             kind = CompletionItemKind.Enum,
+        },
+        {
+            label = 'c',
+            kind = CompletionItemKind.Enum,
+        },
+    }
+}
+
+--FA test
+TEST {
+    {
+        path = 'a.lua',
+        content = [[
+            ---@export-env
+            a = 1
+            function b(arg)
+                return 'str'
+            end
+            c = 'test'
+        ]]
+    },
+    {
+        path = 'b.lua',
+        content = [[
+            local t = require 'a'
+            t.<??>
+        ]],
+        main = true,
+    },
+    completion = {
+        {
+            label = 'a',
+            kind = CompletionItemKind.Enum,
+        },
+        {
+            label = 'b(arg)',
+            kind = CompletionItemKind.Function,
         },
         {
             label = 'c',

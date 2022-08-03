@@ -160,9 +160,9 @@ local function tryParseColor(colorText)
     end
     return {
         alpha = tonumber(colorText:sub(1, 2), 16) / 255,
-        red = tonumber(colorText:sub(3, 4), 16) / 255,
+        red   = tonumber(colorText:sub(3, 4), 16) / 255,
         green = tonumber(colorText:sub(5, 6), 16) / 255,
-        blue = tonumber(colorText:sub(7, 8), 16) / 255,
+        blue  = tonumber(colorText:sub(7, 8), 16) / 255,
     }
 end
 
@@ -170,14 +170,21 @@ end
 ---@param color Color
 ---@return string
 local function colorToText(color)
-    local text = ""
+    local text
     if color.alpha < 1.0 then
-        text = text .. string.format('%02x', math.tointeger(color.alpha * 255))
+        text = string.format('%02X%02X%02X%02X',
+            math.floor(color.alpha * 255),
+            math.floor(color.red   * 255),
+            math.floor(color.green * 255),
+            math.floor(color.blue  * 255)
+        )
+    else
+        text = string.format('%02X%02X%02X',
+            math.floor(color.red   * 255),
+            math.floor(color.green * 255),
+            math.floor(color.blue  * 255)
+        )
     end
-    text = (text
-        .. string.format('%02x', math.tointeger(color.red * 255))
-        .. string.format('%02x', math.tointeger(color.green * 255))
-        .. string.format('%02x', math.tointeger(color.blue * 255))):upper()
     for enum, enumCol in pairs(enumColors) do
         if text == enumCol then
             return enum
@@ -198,29 +205,30 @@ end
 ---@field finish integer
 
 ---@async
-function colors(uri)
+local function colors(uri)
     local state = files.getState(uri)
     local text  = files.getText(uri)
     if not state or not text then
         return nil
     end
     ---@type ColorValue[]
-    local colors = {}
+    local colorValues = {}
 
     guide.eachSource(state.ast, function (source) ---@async
         if source.type == 'string' then
             local color = tryParseColor(source[1])
             if color then
-                colors[#colors+1] = {
-                    start = source.start + 1,
+                colorValues[#colorValues+1] = {
+                    start  = source.start + 1,
                     finish = source.finish - 1,
-                    color = color
+                    color  = color
                 }
             end
         end
     end)
-    return colors
+    return colorValues
 end
+
 return {
     colors = colors,
     colorToText = colorToText

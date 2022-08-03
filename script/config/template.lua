@@ -222,6 +222,7 @@ local template = {
                                                 'continue',
                                             }),
     ['Lua.runtime.plugin']                  = Type.String,
+    ['Lua.runtime.pluginArgs']              = Type.Array(Type.String),
     ['Lua.runtime.fileEncoding']            = Type.String >> 'utf8' << {
                                                 'utf8',
                                                 'ansi',
@@ -373,7 +374,7 @@ local template = {
                                             >> {},
     ['Lua.spell.dict']                      = Type.Array(Type.String),
     ['Lua.misc.parameters']                 = Type.Array(Type.String),
-    ['Lua.type.castNumberToInteger']        = Type.Boolean >> false,
+    ['Lua.type.castNumberToInteger']        = Type.Boolean >> true,
     ['Lua.type.weakUnionCheck']             = Type.Boolean >> false,
     ['Lua.type.weakNilCheck']               = Type.Boolean >> false,
 

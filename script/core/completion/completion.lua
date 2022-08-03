@@ -485,7 +485,7 @@ local function checkFieldFromFieldToIndex(state, name, src, parent, word, startP
 end
 
 local function checkFieldThen(state, name, src, word, startPos, position, parent, oop, results)
-    local value = vm.getObjectValue(src) or src
+    local value = vm.getObjectFunctionValue(src) or src
     local kind = define.CompletionItemKind.Field
     if value.type == 'function'
     or value.type == 'doc.type.function' then
@@ -565,7 +565,8 @@ local function checkFieldOfRefs(refs, state, word, startPos, position, parent, o
         end
         local funcLabel
         if config.get(state.uri, 'Lua.completion.showParams') then
-            local value = vm.getObjectValue(src) or src
+            --- TODO determine if getlocal should be a function here too
+            local value = vm.getObjectFunctionValue(src) or src
             if value.type == 'function'
             or value.type == 'doc.type.function' then
                 funcLabel = name .. getParams(value, oop)
@@ -913,24 +914,24 @@ local function collectRequireNames(mode, myUri, literal, source, smark, position
                 goto CONTINUE
             end
             local path = furi.decode(uri)
-            local infos = rpath.getVisiblePath(uri, path)
+            local infos = rpath.getVisiblePath(myUri, path)
             local relative = workspace.getRelativePath(path)
             for _, info in ipairs(infos) do
-                if matchKey(literal, info.expect) then
-                    if not collect[info.expect] then
-                        collect[info.expect] = {
+                if matchKey(literal, info.name) then
+                    if not collect[info.name] then
+                        collect[info.name] = {
                             textEdit = {
                                 start   = smark and (source.start + #smark) or position,
                                 finish  = smark and (source.finish - #smark) or position,
-                                newText = smark and info.expect or util.viewString(info.expect),
+                                newText = smark and info.name or util.viewString(info.name),
                             },
                             path = relative,
                         }
                     end
                     if vm.isMetaFile(uri) then
-                        collect[info.expect][#collect[info.expect]+1] = ('* [[meta]](%s)'):format(uri)
+                        collect[info.name][#collect[info.name]+1] = ('* [[meta]](%s)'):format(uri)
                     else
-                        collect[info.expect][#collect[info.expect]+1] = ([=[* [%s](%s) %s]=]):format(
+                        collect[info.name][#collect[info.name]+1] = ([=[* [%s](%s) %s]=]):format(
                             relative,
                             uri,
                             lang.script('HOVER_USE_LUA_PATH', info.searcher)
@@ -1597,7 +1598,7 @@ end
 
 local function getComment(state, position)
     local offset = guide.positionToOffset(state, position)
-    local symbolOffset = lookBackward.findAnyOffset(state.lua, offset)
+    local symbolOffset = lookBackward.findAnyOffset(state.lua, offset, true)
     if not symbolOffset then
         return
     end
@@ -1610,9 +1611,9 @@ local function getComment(state, position)
     return nil
 end
 
-local function getluaDoc(state, position)
+local function getLuaDoc(state, position)
     local offset = guide.positionToOffset(state, position)
-    local symbolOffset = lookBackward.findAnyOffset(state.lua, offset)
+    local symbolOffset = lookBackward.findAnyOffset(state.lua, offset, true)
     if not symbolOffset then
         return
     end
@@ -2039,7 +2040,9 @@ local function tryluaDocOfFunction(doc, results)
     if not doc.bindSource then
         return
     end
-    local func = doc.bindSource.type == 'function' and doc.bindSource or nil
+    local func = (doc.bindSource.type == 'function' and doc.bindSource)
+              or (doc.bindSource.value and doc.bindSource.value.type == 'function' and doc.bindSource.value)
+              or nil
     if not func then
         return
     end
@@ -2065,8 +2068,8 @@ local function tryluaDocOfFunction(doc, results)
     }
 end
 
-local function tryluaDoc(state, position, results)
-    local doc = getluaDoc(state, position)
+local function tryLuaDoc(state, position, results)
+    local doc = getLuaDoc(state, position)
     if not doc then
         return
     end
@@ -2105,7 +2108,7 @@ local function tryComment(state, position, results)
         return
     end
     local word = lookBackward.findWord(state.lua, guide.positionToOffset(state, position))
-    local doc  = getluaDoc(state, position)
+    local doc  = getLuaDoc(state, position)
     if not word then
         local comment = getComment(state, position)
         if not comment then
@@ -2144,7 +2147,7 @@ local function tryCompletions(state, position, triggerCharacter, results)
         return
     end
     if getComment(state, position) then
-        tryluaDoc(state, position, results)
+        tryLuaDoc(state, position, results)
         tryComment(state, position, results)
         return
     end

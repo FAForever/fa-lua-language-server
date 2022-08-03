@@ -35,10 +35,8 @@ end
 function mt:getRequireNameByPath(path, searcher)
     local separator    = config.get(self.scp.uri, 'Lua.completion.requireSeparator')
     local stemPath     = path
-                        : gsub('%.[^%.]+$', '')
-                        : gsub('[/\\%.]+', separator)
+                        : gsub('[/\\]+', separator)
     local stemSearcher = searcher
-                        : gsub('%.[^%.]+$', '')
                         : gsub('[/\\]+', separator)
     local start        = stemSearcher:match '()%?' or 1
     if stemPath:sub(1, start - 1) ~= stemSearcher:sub(1, start - 1) then
@@ -60,12 +58,13 @@ function mt:getRequireResultByPath(path)
     local uri = furi.encode(path)
     local searchers   = config.get(self.scp.uri, 'Lua.runtime.path')
     local strict      = config.get(self.scp.uri, 'Lua.runtime.pathStrict')
+    local separator   = config.get(self.scp.uri, 'Lua.completion.requireSeparator')
     local libUri      = files.getLibraryUri(self.scp.uri, uri)
     local libraryPath = libUri and furi.decode(libUri)
     local result = {}
     for _, searcher in ipairs(searchers) do
-        local isAbsolute = searcher:match '^[/\\]'
-                        or searcher:match '^%a+%:'
+        local isAbsolute = searcher:match '^%a+%:'
+        local startsWithSlash = searcher:match '^[/\\]'
         searcher = workspace.normalize(searcher)
         if searcher:sub(1, 1) == '.' then
             strict = true
@@ -76,9 +75,9 @@ function mt:getRequireResultByPath(path)
         local pos = 1
         if not isAbsolute then
             if libraryPath then
-                currentPath = currentPath:sub(#libraryPath + 2)
+                currentPath = currentPath:sub(#libraryPath + (startsWithSlash and 1 or 2))
             else
-                currentPath = workspace.getRelativePath(uri)
+                currentPath = workspace.getRelativePath(uri, startsWithSlash)
             end
         end
 
@@ -115,6 +114,9 @@ function mt:getRequireResultByPath(path)
             end
             local name = self:getRequireNameByPath(cutedPath, searcher)
             if name then
+                if startsWithSlash then
+                    name = separator .. name
+                end
                 local mySearcher = searcher
                 if head then
                     mySearcher = head .. searcher
@@ -164,12 +166,18 @@ function mt:findUrisByRequireName(suri, name)
     local searchers   = config.get(self.scp.uri, 'Lua.runtime.path')
     local strict      = config.get(self.scp.uri, 'Lua.runtime.pathStrict')
     local separator   = config.get(self.scp.uri, 'Lua.completion.requireSeparator')
-    local path        = name:gsub('%' .. separator, '/')
+    local path        = name:gsub('%' .. separator, '/'):lower()
     local results     = {}
     local searcherMap = {}
 
     for _, searcher in ipairs(searchers) do
+        local startsWithSlash = searcher:match '^[/\\]'
+        local pathStartsWithSlash = path:match '^[/\\]'
         local fspath = searcher:gsub('%?', (path:gsub('%%', '%%%%')))
+        if startsWithSlash and pathStartsWithSlash then
+            -- trim off extra double slash from path and searcher
+            fspath = fspath:sub(2)
+        end
         local fullPath = workspace.getAbsolutePath(self.scp.uri, fspath)
         if fullPath then
             local fullUri  = furi.encode(fullPath)
@@ -184,7 +192,7 @@ function mt:findUrisByRequireName(suri, name)
             for uri in files.eachFile(self.scp.uri) do
                 if  not searcherMap[uri]
                 and suri ~= uri
-                and util.stringEndWith(uri, tail) then
+                and util.stringEndWith(uri:lower(), tail) then
                     results[#results+1] = uri
                     local parentUri = files.getLibraryUri(self.scp.uri, uri) or self.scp.uri
                     if parentUri == nil or parentUri == '' then

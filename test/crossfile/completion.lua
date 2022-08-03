@@ -426,6 +426,36 @@ TEST {
 
 config.set(nil, 'Lua.runtime.path', originRuntimePath)
 
+--FA tests
+local originSeparator = config.get(nil, 'Lua.completion.requireSeparator')
+config.set(nil, 'Lua.completion.requireSeparator', '/')
+local originRuntimePath = config.get(nil, 'Lua.runtime.path')
+config.set(nil, 'Lua.runtime.path', {
+    '/?',
+})
+
+TEST {
+    {
+        path = '/lua/Test.lua',
+        content = '',
+    },
+    {
+        path = 'main.lua',
+        content = 'require "<??>"',
+        main = true,
+    },
+    completion = {
+        {
+            label = '/lua/Test.lua',
+            kind = CompletionItemKind.File,
+            textEdit = EXISTS,
+        },
+    }
+}
+
+config.set(nil, 'Lua.runtime.path', originRuntimePath)
+config.set(nil, 'Lua.completion.requireSeparator', originSeparator)
+
 TEST {
     {
         path = 'a.lua',
@@ -461,6 +491,7 @@ TEST {
     }
 }
 
+--FA test
 TEST {
     {
         path = 'a.lua',
@@ -484,15 +515,15 @@ TEST {
     completion = {
         {
             label = 'a',
-            kind = CompletionItemKind.Field,
+            kind = CompletionItemKind.Enum,
         },
         {
-            label = 'b',
-            kind = CompletionItemKind.Field,
+            label = 'b(arg)',
+            kind = CompletionItemKind.Function,
         },
         {
             label = 'c',
-            kind = CompletionItemKind.Field,
+            kind = CompletionItemKind.Enum,
         },
     }
 }

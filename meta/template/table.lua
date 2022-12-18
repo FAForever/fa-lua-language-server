@@ -89,7 +89,6 @@ function table.foreachi(list, callback) end
 ---@param list T[]
 ---@return integer
 ---@nodiscard
----@deprecated
 function table.getn(list) end
 
 return table

@@ -136,6 +136,7 @@ m.TokenModifiers = {
     ["modification"]   = 1 << 7,
     ["documentation"]  = 1 << 8,
     ["defaultLibrary"] = 1 << 9,
+    ["global"]         = 1 << 10,
 }
 
 m.TokenTypes = {
@@ -165,23 +166,26 @@ m.TokenTypes = {
 }
 
 m.BuiltIn = {
-    ['basic']       = 'default',
-    ['bit']         = 'default',
-    ['bit32']       = 'default',
-    ['builtin']     = 'default',
-    ['coroutine']   = 'default',
-    ['debug']       = 'default',
-    ['ffi']         = 'default',
-    ['io']          = 'default',
-    ['jit']         = 'default',
-    ['math']        = 'default',
-    ['os']          = 'default',
-    ['package']     = 'default',
-    ['string']      = 'default',
-    ['table']       = 'default',
-    ['table.new']   = 'default',
-    ['table.clear'] = 'default',
-    ['utf8']        = 'default',
+    ['basic']         = 'default',
+    ['bit']           = 'default',
+    ['bit32']         = 'default',
+    ['builtin']       = 'default',
+    ['coroutine']     = 'default',
+    ['debug']         = 'default',
+    ['ffi']           = 'default',
+    ['io']            = 'default',
+    ['jit']           = 'default',
+    ['jit.profile']   = 'default',
+    ['jit.util']      = 'default',
+    ['math']          = 'default',
+    ['os']            = 'default',
+    ['package']       = 'default',
+    ['string']        = 'default',
+    ['table']         = 'default',
+    ['table.new']     = 'default',
+    ['table.clear']   = 'default',
+    ['utf8']          = 'default',
+    ['string.buffer'] = 'default',
 }
 
 m.InlayHintKind = {

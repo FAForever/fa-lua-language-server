@@ -8,8 +8,8 @@ rawset(_G, 'TEST', true)
 function TEST(script)
     return function (expect)
         local newScript, catched1 = catch(script, '?')
-        files.setText('', newScript)
-        local hovers = core('', catched1['?'][1][1])
+        files.setText(TESTURI, newScript)
+        local hovers = core(TESTURI, catched1['?'][1][1])
         if hovers then
             assert(#hovers == #expect)
             for i, hover in ipairs(hovers) do
@@ -28,7 +28,7 @@ function TEST(script)
         else
             assert(expect == nil)
         end
-        files.remove('')
+        files.remove(TESTURI)
     end
 end
 
@@ -162,7 +162,7 @@ TEST [[
 for _ in pairs(<??>) do
 end
 ]]
-{'function pairs(<!t: <T>!>)'}
+{'function pairs(<!t: <T:table>!>)'}
 
 TEST [[
 function m:f()
@@ -235,11 +235,8 @@ end)(<??>)
 {'function (<!a: any!>, b: any)'}
 
 TEST [[
-function X() end
-
----@param a number
-function X(a) end
-
+---@overload fun()
+---@overload fun(a:number)
 ---@param a number
 ---@param b number
 function X(a, b) end
@@ -252,12 +249,9 @@ X(<??>)
 'function X(<!a: number!>, b: number)',
 }
 
-TEST [[
-function X() end
-
----@param a number
-function X(a) end
-
+TEST [[\
+---@overload fun()
+---@overload fun(a:number)
 ---@param a number
 ---@param b number
 function X(a, b) end
@@ -270,11 +264,8 @@ X(<?1?>)
 }
 
 TEST [[
-function X() end
-
----@param a number
-function X(a) end
-
+---@overload fun()
+---@overload fun(a:number)
 ---@param a number
 ---@param b number
 function X(a, b) end
@@ -286,11 +277,8 @@ X(1, <??>)
 }
 
 TEST [[
-function X() end
-
----@param a number
-function X(a) end
-
+---@overload fun()
+---@overload fun(a:number)
 ---@param a number
 ---@param b number
 function X(a, b) end
@@ -300,3 +288,114 @@ X(1, <?2?>)
 {
 'function X(a: number, <!b: number!>)',
 }
+
+TEST [[
+---@alias A { x:number, y:number, z:number }
+
+---comment
+---@param a A
+---@param b string
+function X(a, b)
+    
+end
+
+X({}, <??>)
+]]
+{
+'function X(a: { x: number, y: number, z: number }, <!b: string!>)'
+}
+
+TEST [[
+---@overload fun(x: number)
+---@overload fun(x: number, y: number)
+local function f(...)
+end
+
+f(<??>)
+]]
+{
+'function f(<!x: number!>)',
+'function f(<!x: number!>, y: number)',
+}
+
+TEST [[
+---@class A
+---@overload fun(x: number)
+
+---@type A
+local t
+
+t(<??>)
+]]
+{
+'function (<!x: number!>)',
+}
+
+TEST [[
+---@class 😅
+
+---@param a 😅
+---@param b integer
+local function f(a, b)
+end
+
+f(1, 2<??>)
+]]
+{
+'function f(a: 😅, <!b: integer!>)',
+}
+
+TEST [[
+---@class A
+---@field event fun(self: self, ev: "onChat", c: string)
+---@field event fun(self: self, ev: "onTimer", t: integer)
+
+---@type A
+local t
+
+t:event("onChat", <??>)
+]]
+{
+'(method) (ev: "onChat", <!c: string!>)',
+}
+
+TEST [[
+---@class A
+---@field event fun(self: self, ev: "onChat", c: string)
+---@field event fun(self: self, ev: "onTimer", t: integer)
+
+---@type A
+local t
+
+t:event("onTimer", <??>)
+]]
+{
+'(method) (ev: "onTimer", <!t: integer!>)',
+}
+
+local config = require 'config'
+config.set(nil, "Lua.type.inferParamType", true)
+
+TEST [[
+local function x(a, b)
+end
+
+x("1", <??>)
+]]
+{
+'function x(a: string, <!b: any!>)'
+}
+
+TEST [[
+local function x(a)
+   
+end
+x('str')
+x(1)
+x(<??>)
+]]
+{
+'function x(<!a: string|integer!>)',
+}
+
+config.set(nil, "Lua.type.inferParamType", false)

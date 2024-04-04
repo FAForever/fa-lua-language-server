@@ -181,6 +181,7 @@ end, function (self, ...)
     self.subs = { ... }
 end)
 
+---@format disable-next
 local template = {
     ['Lua.runtime.version']                 = Type.String >> 'Lua 5.4' << {
                                                 'Lua 5.1',
@@ -209,6 +210,7 @@ local template = {
                                                     'assert',
                                                     'error',
                                                     'type',
+                                                    'os.exit',
                                                 }
                                             ),
     ['Lua.runtime.meta']                    = Type.String >> '${version} ${language} ${encoding}',
@@ -221,8 +223,8 @@ local template = {
                                                 '||', '&&', '!', '!=',
                                                 'continue',
                                             }),
-    ['Lua.runtime.plugin']                  = Type.String,
-    ['Lua.runtime.pluginArgs']              = Type.Array(Type.String),
+    ['Lua.runtime.plugin']                  = Type.Or(Type.String, Type.Array(Type.String)) ,
+    ['Lua.runtime.pluginArgs']              = Type.Or(Type.Array(Type.String), Type.Hash(Type.String, Type.String)),
     ['Lua.runtime.fileEncoding']            = Type.String >> 'utf8' << {
                                                 'utf8',
                                                 'ansi',
@@ -290,6 +292,11 @@ local template = {
                                             )
                                             >> util.deepCopy(define.DiagnosticDefaultGroupFileStatus),
     ['Lua.diagnostics.disableScheme']       = Type.Array(Type.String) >> { 'git' },
+    ['Lua.diagnostics.workspaceEvent']      = Type.String >> 'OnSave' << {
+                                                'OnChange',
+                                                'OnSave',
+                                                'None',
+                                            },
     ['Lua.diagnostics.workspaceDelay']      = Type.Integer >> 3000,
     ['Lua.diagnostics.workspaceRate']       = Type.Integer >> 100,
     ['Lua.diagnostics.libraryFiles']        = Type.String  >> 'Opened' << {
@@ -302,7 +309,7 @@ local template = {
                                                 'Opened',
                                                 'Disable',
                                             },
-    ['Lua.diagnostics.unusedLocalExclude']   = Type.Array(Type.String),
+    ['Lua.diagnostics.unusedLocalExclude']  = Type.Array(Type.String),
     ['Lua.workspace.ignoreDir']             = Type.Array(Type.String) >> {
                                                 '.vscode',
                                             },
@@ -311,9 +318,13 @@ local template = {
     ['Lua.workspace.maxPreload']            = Type.Integer >> 5000,
     ['Lua.workspace.preloadFileSize']       = Type.Integer >> 500,
     ['Lua.workspace.library']               = Type.Array(Type.String),
-    ['Lua.workspace.checkThirdParty']       = Type.Boolean >> true,
+    ['Lua.workspace.checkThirdParty']       = Type.Or(Type.String >> 'Ask' << {
+                                                'Ask',
+                                                'Apply',
+                                                'ApplyInMemory',
+                                                'Disable',
+                                            }, Type.Boolean),
     ['Lua.workspace.userThirdParty']        = Type.Array(Type.String),
-    ['Lua.workspace.supportScheme']         = Type.Array(Type.String) >> { 'file', 'untitled', 'git' },
     ['Lua.completion.enable']               = Type.Boolean >> true,
     ['Lua.completion.callSnippet']          = Type.String  >> 'Disable' << {
                                                 'Disable',
@@ -369,18 +380,41 @@ local template = {
                                             },
     ['Lua.window.statusBar']                = Type.Boolean >> true,
     ['Lua.window.progressBar']              = Type.Boolean >> true,
+    ['Lua.codeLens.enable']                 = Type.Boolean >> false,
     ['Lua.format.enable']                   = Type.Boolean >> true,
     ['Lua.format.defaultConfig']            = Type.Hash(Type.String, Type.String)
                                             >> {},
+    ['Lua.typeFormat.config']               = Type.Hash(Type.String, Type.String)
+                                            >> {
+                                                format_line = "true",
+                                                auto_complete_end = "true",
+                                                auto_complete_table_sep = "true"
+                                            },
     ['Lua.spell.dict']                      = Type.Array(Type.String),
+    ['Lua.nameStyle.config']                = Type.Hash(Type.String, Type.Or(Type.String, Type.Array(Type.Hash(Type.String, Type.String))))
+                                            >> {},
     ['Lua.misc.parameters']                 = Type.Array(Type.String),
+    ['Lua.misc.executablePath']             = Type.String,
     ['Lua.type.castNumberToInteger']        = Type.Boolean >> true,
     ['Lua.type.weakUnionCheck']             = Type.Boolean >> false,
     ['Lua.type.weakNilCheck']               = Type.Boolean >> false,
+    ['Lua.type.inferParamType']            = Type.Boolean >> false,
+    ['Lua.doc.privateName']                 = Type.Array(Type.String),
+    ['Lua.doc.protectedName']               = Type.Array(Type.String),
+    ['Lua.doc.packageName']                 = Type.Array(Type.String),
 
     -- VSCode
+    ["Lua.addonManager.enable"]             = Type.Boolean >> true,
     ['files.associations']                  = Type.Hash(Type.String, Type.String),
-    ['files.exclude']                       = Type.Hash(Type.String, Type.Boolean),
+                                            -- copy from VSCode default
+    ['files.exclude']                       = Type.Hash(Type.String, Type.Boolean) >> {
+                                                ["**/.DS_Store"] = true,
+                                                ["**/.git"]      = true,
+                                                ["**/.hg"]       = true,
+                                                ["**/.svn"]      = true,
+                                                ["**/CVS"]       = true,
+                                                ["**/Thumbs.db"] = true,
+                                            },
     ['editor.semanticHighlighting.enabled'] = Type.Or(Type.Boolean, Type.String),
     ['editor.acceptSuggestionOnEnter']      = Type.String  >> 'on',
 }

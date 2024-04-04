@@ -1,4 +1,4 @@
----@meta
+---@meta os
 
 ---#DES 'os'
 ---@class oslib
@@ -44,7 +44,7 @@ function os.date(format, time) end
 function os.difftime(t2, t1) end
 
 ---#DES 'os.execute'
----#if VERSION <= 5.1 then
+---#if VERSION <= 5.1 and not JIT then
 ---@param command? string
 ---@return integer code
 function os.execute(command) end
@@ -87,12 +87,12 @@ function os.remove(filename) end
 function os.rename(oldname, newname) end
 
 ---@alias localecategory
----|>'"all"'
----| '"collate"'
----| '"ctype"'
----| '"monetary"'
----| '"numeric"'
----| '"time"'
+---|>"all"
+---| "collate"
+---| "ctype"
+---| "monetary"
+---| "numeric"
+---| "time"
 
 ---#DES 'os.setlocale'
 ---@param locale    string|nil
@@ -100,8 +100,28 @@ function os.rename(oldname, newname) end
 ---@return string localecategory
 function os.setlocale(locale, category) end
 
+---@class osdateparam
+---#DES 'osdate.year'
+---@field year  integer|string
+---#DES 'osdate.month'
+---@field month integer|string
+---#DES 'osdate.day'
+---@field day   integer|string
+---#DES 'osdate.hour'
+---@field hour  (integer|string)?
+---#DES 'osdate.min'
+---@field min   (integer|string)?
+---#DES 'osdate.sec'
+---@field sec   (integer|string)?
+---#DES 'osdate.wday'
+---@field wday  (integer|string)?
+---#DES 'osdate.yday'
+---@field yday  (integer|string)?
+---#DES 'osdate.isdst'
+---@field isdst boolean?
+
 ---#DES 'os.time'
----@param date? osdate
+---@param date? osdateparam
 ---@return integer
 ---@nodiscard
 function os.time(date) end

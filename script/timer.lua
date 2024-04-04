@@ -14,6 +14,7 @@ local curIndex = 0
 local tarFrame = 0
 local fwFrame  = 0
 local freeQueue = {}
+---@type (timer|false)[][]
 local timer = {}
 
 local function allocQueue()
@@ -97,7 +98,14 @@ local function onTick()
     freeQueue[#freeQueue + 1] = q
 end
 
+---@class timer.manager
 local m = {}
+
+---@class timer
+---@field package _onTimer? fun(self: timer)
+---@field package _timeoutFrame integer
+---@field package _timeout integer
+---@field package _timerCount integer
 local mt = {}
 mt.__index = mt
 mt.type = 'timer'
@@ -113,6 +121,7 @@ function mt:__call()
 end
 
 function mt:remove()
+    ---@package
     self._removed = true
 end
 
@@ -120,7 +129,9 @@ function mt:pause()
     if self._removed or self._pauseRemaining then
         return
     end
+    ---@package
     self._pauseRemaining = getRemaining(self)
+    ---@package
     self._running = false
     local ti = self._timeoutFrame
     local q = timer[ti]
@@ -139,6 +150,7 @@ function mt:resume()
         return
     end
     local timeout = self._pauseRemaining
+    ---@package
     self._pauseRemaining = nil
     mTimeout(self, timeout)
 end
@@ -157,6 +169,7 @@ function mt:restart()
             end
         end
     end
+    ---@package
     self._running = false
     mTimeout(self, self._timeout)
 end
@@ -170,21 +183,23 @@ function mt:onTimer()
 end
 
 function m.wait(timeout, onTimer)
+    local _timeout = mathMax(mathFloor(timeout * 1000.0), 1)
     local t = setmetatable({
-        ['_timeout'] = mathMax(mathFloor(timeout * 1000.0), 1),
+        ['_timeout'] = _timeout,
         ['_onTimer'] = onTimer,
         ['_timerCount'] = 1,
     }, mt)
-    mTimeout(t, t._timeout)
+    mTimeout(t, _timeout)
     return t
 end
 
 function m.loop(timeout, onTimer)
+    local _timeout = mathFloor(timeout * 1000.0)
     local t = setmetatable({
-        ['_timeout'] = mathFloor(timeout * 1000.0),
+        ['_timeout'] = _timeout,
         ['_onTimer'] = onTimer,
     }, mt)
-    mTimeout(t, t._timeout)
+    mTimeout(t, _timeout)
     return t
 end
 
@@ -192,12 +207,13 @@ function m.timer(timeout, count, onTimer)
     if count == 0 then
         return m.loop(timeout, onTimer)
     end
+    local _timeout = mathFloor(timeout * 1000.0)
     local t = setmetatable({
-        ['_timeout'] = mathFloor(timeout * 1000.0),
+        ['_timeout'] = _timeout,
         ['_onTimer'] = onTimer,
         ['_timerCount'] = count,
     }, mt)
-    mTimeout(t, t._timeout)
+    mTimeout(t, _timeout)
     return t
 end
 

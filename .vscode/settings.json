@@ -1,9 +1,11 @@
 // Just some comment
 {
     "Lua.misc.parameters": [
-        "--preview",
+        //"--preview",
         "--develop=true",
         "--dbgport=11414",
         "--loglevel=trace",
-    ]
+        "--shownode",
+        //"--lazy",
+    ],
 }

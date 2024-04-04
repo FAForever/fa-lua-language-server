@@ -201,3 +201,48 @@ local b = { }
 a.color = { 1, 1, 1 }
 b.<~color~> = a.color
 ]]
+
+TEST [[
+---@alias <~A~> number
+
+---@type <!A!>
+]]
+
+TEST [[
+---@class A
+---@field <~x~> number
+
+---@type A
+local t
+print(t.<!x!>)
+]]
+
+TEST [[
+---@class A
+---@field <!x!> number
+
+---@type A
+local t1
+
+t1.<~x~> = 1
+
+---@type A
+local t2
+
+t2.<!x!> = 1
+]]
+
+TEST [[
+---@alias lang 'en' | 'de'
+
+---@class A
+local a
+
+---@type lang
+a.test = 'en'
+
+---@class B
+local b
+
+b.<?<!test!>?> = a.test
+]]

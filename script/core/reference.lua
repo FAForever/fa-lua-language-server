@@ -51,10 +51,14 @@ local accept = {
     ['doc.extends.name'] = true,
     ['doc.alias.name']   = true,
     ['doc.enum.name']    = true,
+    ['doc.field.name']   = true,
 }
 
 ---@async
-return function (uri, position)
+---@param uri uri
+---@param position integer
+---@param includeDeclaration boolean
+return function (uri, position, includeDeclaration)
     local ast = files.getState(uri)
     if not ast then
         return nil
@@ -81,6 +85,12 @@ return function (uri, position)
         if src.type == 'self' then
             goto CONTINUE
         end
+        if not includeDeclaration then
+            if guide.isAssign(src)
+            or guide.isLiteral(src) then
+                goto CONTINUE
+            end
+        end
         src = src.field or src.method or src
         if src.type == 'getindex'
         or src.type == 'setindex'
@@ -106,6 +116,9 @@ return function (uri, position)
         if src.type == 'doc.enum' then
             src = src.enum
         end
+        if src.type == 'doc.type.field' then
+            src = src.name
+        end
         if src.type == 'doc.class.name'
         or src.type == 'doc.alias.name'
         or src.type == 'doc.enum.name'
@@ -115,7 +128,8 @@ return function (uri, position)
             and source.type ~= 'doc.class.name'
             and source.type ~= 'doc.enum.name'
             and source.type ~= 'doc.extends.name'
-            and source.type ~= 'doc.see.name' then
+            and source.type ~= 'doc.see.name'
+            and source.type ~= 'doc.alias.name' then
                 goto CONTINUE
             end
         end

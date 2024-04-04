@@ -32,8 +32,10 @@ local function getDefault(temp)
     if default == nil and temp.hasDefault then
         default = json.null
     end
-    if type(default) == 'table' and getType(temp) == 'object' then
-        setmetatable(default, json.object)
+    if  type(default) == 'table'
+    and not next(default)
+    and getType(temp) == 'object' then
+        default = json.createEmptyObject()
     end
     return default
 end
@@ -119,7 +121,5 @@ for name, temp in pairs(template) do
 
     ::CONTINUE::
 end
-
-config['Lua.telemetry.enable'].tags = { 'telemetry' }
 
 return config

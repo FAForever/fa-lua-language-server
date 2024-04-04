@@ -16,9 +16,12 @@ return function (uri, callback)
         if not loc.ref then
             return
         end
+        if loc[1] == '_' then
+            return
+        end
         await.delay()
         local locNode = vm.compileNode(loc)
-        if not locNode:getData 'hasDefined' then
+        if not locNode.hasDefined then
             return
         end
         for _, ref in ipairs(loc.ref) do
@@ -34,14 +37,15 @@ return function (uri, callback)
                     refNode = refNode:copy():setTruthy()
                 end
 
-                if not vm.canCastType(uri, locNode, refNode) then
+                local errs = {}
+                if not vm.canCastType(uri, locNode, refNode, errs) then
                     callback {
                         start   = ref.start,
                         finish  = ref.finish,
                         message = lang.script('DIAG_CAST_LOCAL_TYPE', {
                             def = vm.getInfer(locNode):view(uri),
                             ref = vm.getInfer(refNode):view(uri),
-                        }),
+                        }) .. '\n' .. vm.viewTypeErrorMessage(uri, errs),
                     }
                 end
             end

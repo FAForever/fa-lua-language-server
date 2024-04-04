@@ -6,6 +6,7 @@ local util       = require 'utility'
 local findSource = require 'core.find-source'
 local markdown   = require 'provider.markdown'
 local guide      = require 'parser.guide'
+local wssymbol   = require 'core.workspace-symbol'
 
 ---@async
 local function getHover(source)
@@ -13,6 +14,15 @@ local function getHover(source)
     local defMark   = {}
     local labelMark = {}
     local descMark  = {}
+
+    if source.type == 'doc.see.name' then
+        for _, symbol in ipairs(wssymbol(source[1], guide.getUri(source))) do
+            if symbol.name == source[1] then
+                source = symbol.source
+                break
+            end
+        end
+    end
 
     ---@async
     local function addHover(def, checkLable, oop)
@@ -60,8 +70,12 @@ local function getHover(source)
             if guide.isOOP(def) then
                 oop = true
             end
-            if def.type == 'function'
-            or def.type == 'doc.type.function' then
+            if  def.type == 'function'
+            and not vm.isVarargFunctionWithOverloads(def) then
+                hasFunc = true
+                addHover(def, true, oop)
+            end
+            if def.type == 'doc.type.function' then
                 hasFunc = true
                 addHover(def, true, oop)
             end
@@ -72,7 +86,8 @@ local function getHover(source)
     else
         addHover(source, true, oop)
         for _, def in ipairs(vm.getDefs(source)) do
-            if def.type == 'global' then
+            if def.type == 'global'
+            or def.type == 'setlocal' then
                 goto CONTINUE
             end
             if guide.isOOP(def) then
@@ -107,6 +122,7 @@ local accept = {
     ['doc.enum.name']  = true,
     ['function']       = true,
     ['doc.module']     = true,
+    ['doc.see.name']   = true,
 }
 
 ---@async
@@ -122,7 +138,15 @@ local function getHoverByUri(uri, position)
     local hover = getHover(source)
     if SHOWSOURCE then
         hover:splitLine()
+        hover:add('md', 'Source Info')
         hover:add('lua', util.dump(source, {
+            deep = 1,
+        }))
+    end
+    if SHOWNODE then
+        hover:splitLine()
+        hover:add('md', 'Node Info')
+        hover:add('lua', util.dump(vm.compileNode(source), {
             deep = 1,
         }))
     end

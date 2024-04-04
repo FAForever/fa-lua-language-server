@@ -37,7 +37,7 @@ end
 
 function m.findWord(text, offset)
     for i = offset, 1, -1 do
-        if not text:sub(i, i):match '[%w_]' then
+        if not text:sub(i, i):match '[%w_\x80-\xff]' then
             if i == offset then
                 return nil
             end
@@ -58,7 +58,8 @@ function m.findSymbol(text, offset)
         or char == '('
         or char == ','
         or char == '['
-        or char == '=' then
+        or char == '='
+        or char == '{' then
             return char, i
         else
             return nil

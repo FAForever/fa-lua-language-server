@@ -1,3 +1,35 @@
+# addonManager.enable
+
+Whether the addon manager is enabled or not.
+
+## type
+
+```ts
+boolean
+```
+
+## default
+
+```jsonc
+true
+```
+
+# codeLens.enable
+
+启用代码度量。
+
+## type
+
+```ts
+boolean
+```
+
+## default
+
+```jsonc
+false
+```
+
 # completion.autoRequire
 
 输入内容看起来是个文件名时，自动 `require` 此文件。
@@ -190,6 +222,7 @@ Array<string>
 
 * ``"action-after-return"``
 * ``"ambiguity-1"``
+* ``"ambiguous-syntax"``
 * ``"args-after-dots"``
 * ``"assign-type-mismatch"``
 * ``"await-in-sync"``
@@ -221,12 +254,41 @@ Array<string>
 * ``"err-nonstandard-symbol"``
 * ``"err-then-as-do"``
 * ``"exp-in-action"``
+* ``"global-element"``
 * ``"global-in-nil-env"``
+* ``"incomplete-signature-doc"``
 * ``"index-in-func-name"``
+* ``"inject-field"``
+* ``"invisible"``
 * ``"jump-local-scope"``
 * ``"keyword"``
 * ``"local-limit"``
 * ``"lowercase-global"``
+* ``"lua-doc-miss-sign"``
+* ``"luadoc-error-diag-mode"``
+* ``"luadoc-miss-alias-extends"``
+* ``"luadoc-miss-alias-name"``
+* ``"luadoc-miss-arg-name"``
+* ``"luadoc-miss-cate-name"``
+* ``"luadoc-miss-class-extends-name"``
+* ``"luadoc-miss-class-name"``
+* ``"luadoc-miss-diag-mode"``
+* ``"luadoc-miss-diag-name"``
+* ``"luadoc-miss-field-extends"``
+* ``"luadoc-miss-field-name"``
+* ``"luadoc-miss-fun-after-overload"``
+* ``"luadoc-miss-generic-name"``
+* ``"luadoc-miss-local-name"``
+* ``"luadoc-miss-module-name"``
+* ``"luadoc-miss-operator-name"``
+* ``"luadoc-miss-param-extends"``
+* ``"luadoc-miss-param-name"``
+* ``"luadoc-miss-see-name"``
+* ``"luadoc-miss-sign-name"``
+* ``"luadoc-miss-symbol"``
+* ``"luadoc-miss-type-name"``
+* ``"luadoc-miss-vararg-type"``
+* ``"luadoc-miss-version"``
 * ``"malformed-number"``
 * ``"miss-end"``
 * ``"miss-esc-x"``
@@ -240,10 +302,16 @@ Array<string>
 * ``"miss-sep-in-table"``
 * ``"miss-space-between"``
 * ``"miss-symbol"``
+* ``"missing-fields"``
+* ``"missing-global-doc"``
+* ``"missing-local-export-doc"``
 * ``"missing-parameter"``
 * ``"missing-return"``
 * ``"missing-return-value"``
+* ``"name-style-check"``
 * ``"need-check-nil"``
+* ``"need-paren"``
+* ``"nesting-long-mark"``
 * ``"newfield-call"``
 * ``"newline-call"``
 * ``"no-unknown"``
@@ -382,9 +450,14 @@ object<string, string>
     "await": "Fallback",
     /*
     * codestyle-check
+    * name-style-check
     * spell-check
     */
     "codestyle": "Fallback",
+    /*
+    * global-element
+    */
+    "conventions": "Fallback",
     /*
     * duplicate-index
     * duplicate-set-field
@@ -403,6 +476,9 @@ object<string, string>
     * duplicate-doc-alias
     * duplicate-doc-field
     * duplicate-doc-param
+    * incomplete-signature-doc
+    * missing-global-doc
+    * missing-local-export-doc
     * undefined-doc-class
     * undefined-doc-name
     * undefined-doc-param
@@ -419,6 +495,7 @@ object<string, string>
     * close-non-object
     * deprecated
     * discard-returns
+    * invisible
     */
     "strict": "Fallback",
     /*
@@ -429,6 +506,7 @@ object<string, string>
     * assign-type-mismatch
     * cast-local-type
     * cast-type-mismatch
+    * inject-field
     * need-check-nil
     * param-type-mismatch
     * return-type-mismatch
@@ -436,6 +514,7 @@ object<string, string>
     */
     "type-check": "Fallback",
     /*
+    * missing-fields
     * missing-parameter
     * missing-return
     * missing-return-value
@@ -500,9 +579,14 @@ object<string, string>
     "await": "Fallback",
     /*
     * codestyle-check
+    * name-style-check
     * spell-check
     */
     "codestyle": "Fallback",
+    /*
+    * global-element
+    */
+    "conventions": "Fallback",
     /*
     * duplicate-index
     * duplicate-set-field
@@ -521,6 +605,9 @@ object<string, string>
     * duplicate-doc-alias
     * duplicate-doc-field
     * duplicate-doc-param
+    * incomplete-signature-doc
+    * missing-global-doc
+    * missing-local-export-doc
     * undefined-doc-class
     * undefined-doc-name
     * undefined-doc-param
@@ -537,6 +624,7 @@ object<string, string>
     * close-non-object
     * deprecated
     * discard-returns
+    * invisible
     */
     "strict": "Fallback",
     /*
@@ -547,6 +635,7 @@ object<string, string>
     * assign-type-mismatch
     * cast-local-type
     * cast-type-mismatch
+    * inject-field
     * need-check-nil
     * param-type-mismatch
     * return-type-mismatch
@@ -554,6 +643,7 @@ object<string, string>
     */
     "type-check": "Fallback",
     /*
+    * missing-fields
     * missing-parameter
     * missing-return
     * missing-return-value
@@ -654,42 +744,128 @@ object<string, string>
     优先级歧义，如：`num or 0 + 1`，推测用户的实际期望为 `(num or 0) + 1` 
     */
     "ambiguity-1": "Any",
+    /*
+    Enable diagnostics for assignments in which the value's type does not match the type of the assigned variable.
+    */
     "assign-type-mismatch": "Opened",
+    /*
+    Enable diagnostics for calls of asynchronous functions within a synchronous function.
+    */
     "await-in-sync": "None",
+    /*
+    Enable diagnostics for casts of local variables where the target type does not match the defined type.
+    */
     "cast-local-type": "Opened",
+    /*
+    Enable diagnostics for casts where the target type does not match the initial type.
+    */
     "cast-type-mismatch": "Opened",
     "circle-doc-class": "Any",
+    /*
+    Enable diagnostics for attempts to close a variable with a non-object.
+    */
     "close-non-object": "Any",
+    /*
+    Enable diagnostics for code placed after a break statement in a loop.
+    */
     "code-after-break": "Opened",
+    /*
+    Enable diagnostics for incorrectly styled lines.
+    */
     "codestyle-check": "None",
+    /*
+    Enable diagnostics for `for` loops which will never reach their max/limit because the loop is incrementing instead of decrementing.
+    */
     "count-down-loop": "Any",
+    /*
+    Enable diagnostics to highlight deprecated API.
+    */
     "deprecated": "Any",
+    /*
+    Enable diagnostics for files which are required by two different paths.
+    */
     "different-requires": "Any",
+    /*
+    Enable diagnostics for calls of functions annotated with `---@nodiscard` where the return values are ignored.
+    */
     "discard-returns": "Any",
+    /*
+    Enable diagnostics to highlight a field annotation without a defining class annotation.
+    */
     "doc-field-no-class": "Any",
+    /*
+    Enable diagnostics for a duplicated alias annotation name.
+    */
     "duplicate-doc-alias": "Any",
+    /*
+    Enable diagnostics for a duplicated field annotation name.
+    */
     "duplicate-doc-field": "Any",
+    /*
+    Enable diagnostics for a duplicated param annotation name.
+    */
     "duplicate-doc-param": "Any",
     /*
     在字面量表中重复定义了索引
     */
     "duplicate-index": "Any",
-    "duplicate-set-field": "Any",
+    /*
+    Enable diagnostics for setting the same field in a class more than once.
+    */
+    "duplicate-set-field": "Opened",
     /*
     空代码块
     */
     "empty-block": "Opened",
     /*
+    Enable diagnostics to warn about global elements.
+    */
+    "global-element": "None",
+    /*
     不能使用全局变量（ `_ENV` 被设置为了 `nil`）
     */
     "global-in-nil-env": "Any",
     /*
+    Incomplete @param or @return annotations for functions.
+    */
+    "incomplete-signature-doc": "None",
+    "inject-field": "Opened",
+    /*
+    Enable diagnostics for accesses to fields which are invisible.
+    */
+    "invisible": "Any",
+    /*
     首字母小写的全局变量定义
     */
     "lowercase-global": "Any",
+    "missing-fields": "Any",
+    /*
+    Missing annotations for globals! Global functions must have a comment and annotations for all parameters and return values.
+    */
+    "missing-global-doc": "None",
+    /*
+    Missing annotations for exported locals! Exported local functions must have a comment and annotations for all parameters and return values.
+    */
+    "missing-local-export-doc": "None",
+    /*
+    Enable diagnostics for function calls where the number of arguments is less than the number of annotated function parameters.
+    */
     "missing-parameter": "Any",
+    /*
+    Enable diagnostics for functions with return annotations which have no return statement.
+    */
     "missing-return": "Any",
+    /*
+    Enable diagnostics for return statements without values although the containing function declares returns.
+    */
     "missing-return-value": "Any",
+    /*
+    Enable diagnostics for name style.
+    */
+    "name-style-check": "None",
+    /*
+    Enable diagnostics for variable usages if `nil` or an optional (potentially `nil`) value was assigned to the variable before.
+    */
     "need-check-nil": "Opened",
     /*
     在字面量表中，2行代码之间缺少分隔符，在语法上被解析为了一次索引操作
@@ -699,8 +875,17 @@ object<string, string>
     以 `(` 开始的新行，在语法上被解析为了上一行的函数调用
     */
     "newline-call": "Any",
+    /*
+    Enable diagnostics for cases in which the type cannot be inferred.
+    */
     "no-unknown": "None",
+    /*
+    Enable diagnostics for calls to `coroutine.yield()` when it is not permitted.
+    */
     "not-yieldable": "None",
+    /*
+    Enable diagnostics for function calls where the type of a provided parameter does not match the type of the annotated function definition.
+    */
     "param-type-mismatch": "Opened",
     /*
     重复定义的局部变量
@@ -710,34 +895,73 @@ object<string, string>
     函数调用时，传入了多余的参数
     */
     "redundant-parameter": "Any",
+    /*
+    Enable diagnostics for return statements which are not needed because the function would exit on its own.
+    */
     "redundant-return": "Opened",
+    /*
+    Enable diagnostics for return statements which return an extra value which is not specified by a return annotation.
+    */
     "redundant-return-value": "Any",
     /*
     赋值操作时，值的数量比被赋值的对象多
     */
     "redundant-value": "Any",
+    /*
+    Enable diagnostics for return values whose type does not match the type declared in the corresponding return annotation.
+    */
     "return-type-mismatch": "Opened",
+    /*
+    Enable diagnostics for typos in strings.
+    */
     "spell-check": "None",
     /*
     后置空格
     */
     "trailing-space": "Opened",
+    /*
+    Enable diagnostics on multiple assignments if not all variables obtain a value (e.g., `local x,y = 1`).
+    */
     "unbalanced-assignments": "Any",
+    /*
+    Enable diagnostics for class annotations in which an undefined class is referenced.
+    */
     "undefined-doc-class": "Any",
+    /*
+    Enable diagnostics for type annotations referencing an undefined type or alias.
+    */
     "undefined-doc-name": "Any",
+    /*
+    Enable diagnostics for cases in which a parameter annotation is given without declaring the parameter in the function definition.
+    */
     "undefined-doc-param": "Any",
     /*
     `_ENV` 被设置为了新的字面量表，但是试图获取的全局变量不再这张表中
     */
     "undefined-env-child": "Any",
+    /*
+    Enable diagnostics for cases in which an undefined field of a variable is read.
+    */
     "undefined-field": "Opened",
     /*
     未定义的全局变量
     */
     "undefined-global": "Any",
+    /*
+    Enable diagnostics for casts of undefined variables.
+    */
     "unknown-cast-variable": "Any",
+    /*
+    Enable diagnostics in cases in which an unknown diagnostics code is entered.
+    */
     "unknown-diag-code": "Any",
+    /*
+    Enable diagnostics for unknown operators.
+    */
     "unknown-operator": "Any",
+    /*
+    Enable diagnostics for unreachable code.
+    */
     "unreachable-code": "Opened",
     /*
     未使用的函数
@@ -789,42 +1013,128 @@ object<string, string>
     优先级歧义，如：`num or 0 + 1`，推测用户的实际期望为 `(num or 0) + 1` 
     */
     "ambiguity-1": "Warning",
+    /*
+    Enable diagnostics for assignments in which the value's type does not match the type of the assigned variable.
+    */
     "assign-type-mismatch": "Warning",
+    /*
+    Enable diagnostics for calls of asynchronous functions within a synchronous function.
+    */
     "await-in-sync": "Warning",
+    /*
+    Enable diagnostics for casts of local variables where the target type does not match the defined type.
+    */
     "cast-local-type": "Warning",
+    /*
+    Enable diagnostics for casts where the target type does not match the initial type.
+    */
     "cast-type-mismatch": "Warning",
     "circle-doc-class": "Warning",
+    /*
+    Enable diagnostics for attempts to close a variable with a non-object.
+    */
     "close-non-object": "Warning",
+    /*
+    Enable diagnostics for code placed after a break statement in a loop.
+    */
     "code-after-break": "Hint",
+    /*
+    Enable diagnostics for incorrectly styled lines.
+    */
     "codestyle-check": "Warning",
+    /*
+    Enable diagnostics for `for` loops which will never reach their max/limit because the loop is incrementing instead of decrementing.
+    */
     "count-down-loop": "Warning",
+    /*
+    Enable diagnostics to highlight deprecated API.
+    */
     "deprecated": "Warning",
+    /*
+    Enable diagnostics for files which are required by two different paths.
+    */
     "different-requires": "Warning",
+    /*
+    Enable diagnostics for calls of functions annotated with `---@nodiscard` where the return values are ignored.
+    */
     "discard-returns": "Warning",
+    /*
+    Enable diagnostics to highlight a field annotation without a defining class annotation.
+    */
     "doc-field-no-class": "Warning",
+    /*
+    Enable diagnostics for a duplicated alias annotation name.
+    */
     "duplicate-doc-alias": "Warning",
+    /*
+    Enable diagnostics for a duplicated field annotation name.
+    */
     "duplicate-doc-field": "Warning",
+    /*
+    Enable diagnostics for a duplicated param annotation name.
+    */
     "duplicate-doc-param": "Warning",
     /*
     在字面量表中重复定义了索引
     */
     "duplicate-index": "Warning",
+    /*
+    Enable diagnostics for setting the same field in a class more than once.
+    */
     "duplicate-set-field": "Warning",
     /*
     空代码块
     */
     "empty-block": "Hint",
     /*
+    Enable diagnostics to warn about global elements.
+    */
+    "global-element": "Warning",
+    /*
     不能使用全局变量（ `_ENV` 被设置为了 `nil`）
     */
     "global-in-nil-env": "Warning",
     /*
+    Incomplete @param or @return annotations for functions.
+    */
+    "incomplete-signature-doc": "Warning",
+    "inject-field": "Warning",
+    /*
+    Enable diagnostics for accesses to fields which are invisible.
+    */
+    "invisible": "Warning",
+    /*
     首字母小写的全局变量定义
     */
     "lowercase-global": "Information",
+    "missing-fields": "Warning",
+    /*
+    Missing annotations for globals! Global functions must have a comment and annotations for all parameters and return values.
+    */
+    "missing-global-doc": "Warning",
+    /*
+    Missing annotations for exported locals! Exported local functions must have a comment and annotations for all parameters and return values.
+    */
+    "missing-local-export-doc": "Warning",
+    /*
+    Enable diagnostics for function calls where the number of arguments is less than the number of annotated function parameters.
+    */
     "missing-parameter": "Warning",
+    /*
+    Enable diagnostics for functions with return annotations which have no return statement.
+    */
     "missing-return": "Warning",
+    /*
+    Enable diagnostics for return statements without values although the containing function declares returns.
+    */
     "missing-return-value": "Warning",
+    /*
+    Enable diagnostics for name style.
+    */
+    "name-style-check": "Warning",
+    /*
+    Enable diagnostics for variable usages if `nil` or an optional (potentially `nil`) value was assigned to the variable before.
+    */
     "need-check-nil": "Warning",
     /*
     在字面量表中，2行代码之间缺少分隔符，在语法上被解析为了一次索引操作
@@ -834,8 +1144,17 @@ object<string, string>
     以 `(` 开始的新行，在语法上被解析为了上一行的函数调用
     */
     "newline-call": "Warning",
+    /*
+    Enable diagnostics for cases in which the type cannot be inferred.
+    */
     "no-unknown": "Warning",
+    /*
+    Enable diagnostics for calls to `coroutine.yield()` when it is not permitted.
+    */
     "not-yieldable": "Warning",
+    /*
+    Enable diagnostics for function calls where the type of a provided parameter does not match the type of the annotated function definition.
+    */
     "param-type-mismatch": "Warning",
     /*
     重复定义的局部变量
@@ -845,34 +1164,73 @@ object<string, string>
     函数调用时，传入了多余的参数
     */
     "redundant-parameter": "Warning",
+    /*
+    Enable diagnostics for return statements which are not needed because the function would exit on its own.
+    */
     "redundant-return": "Hint",
+    /*
+    Enable diagnostics for return statements which return an extra value which is not specified by a return annotation.
+    */
     "redundant-return-value": "Warning",
     /*
     赋值操作时，值的数量比被赋值的对象多
     */
     "redundant-value": "Warning",
+    /*
+    Enable diagnostics for return values whose type does not match the type declared in the corresponding return annotation.
+    */
     "return-type-mismatch": "Warning",
+    /*
+    Enable diagnostics for typos in strings.
+    */
     "spell-check": "Information",
     /*
     后置空格
     */
     "trailing-space": "Hint",
+    /*
+    Enable diagnostics on multiple assignments if not all variables obtain a value (e.g., `local x,y = 1`).
+    */
     "unbalanced-assignments": "Warning",
+    /*
+    Enable diagnostics for class annotations in which an undefined class is referenced.
+    */
     "undefined-doc-class": "Warning",
+    /*
+    Enable diagnostics for type annotations referencing an undefined type or alias.
+    */
     "undefined-doc-name": "Warning",
+    /*
+    Enable diagnostics for cases in which a parameter annotation is given without declaring the parameter in the function definition.
+    */
     "undefined-doc-param": "Warning",
     /*
     `_ENV` 被设置为了新的字面量表，但是试图获取的全局变量不再这张表中
     */
     "undefined-env-child": "Information",
+    /*
+    Enable diagnostics for cases in which an undefined field of a variable is read.
+    */
     "undefined-field": "Warning",
     /*
     未定义的全局变量
     */
     "undefined-global": "Warning",
+    /*
+    Enable diagnostics for casts of undefined variables.
+    */
     "unknown-cast-variable": "Warning",
+    /*
+    Enable diagnostics in cases in which an unknown diagnostics code is entered.
+    */
     "unknown-diag-code": "Warning",
+    /*
+    Enable diagnostics for unknown operators.
+    */
     "unknown-operator": "Warning",
+    /*
+    Enable diagnostics for unreachable code.
+    */
     "unreachable-code": "Hint",
     /*
     未使用的函数
@@ -911,7 +1269,7 @@ Array<string>
 
 # diagnostics.workspaceDelay
 
-进行工作区诊断的延迟（毫秒）。当你启动工作区，或编辑了任意文件后，将会在后台对整个工作区进行重新诊断。设置为负数可以禁用工作区诊断。
+进行工作区诊断的延迟（毫秒）。
 
 ## type
 
@@ -923,6 +1281,28 @@ integer
 
 ```jsonc
 3000
+```
+
+# diagnostics.workspaceEvent
+
+设置触发工作区诊断的时机。
+
+## type
+
+```ts
+string
+```
+
+## enum
+
+* ``"OnChange"``: 当文件发生变化时触发工作区诊断。
+* ``"OnSave"``: 当文件保存时触发工作区诊断。
+* ``"None"``: 关闭工作区诊断。
+
+## default
+
+```jsonc
+"OnSave"
 ```
 
 # diagnostics.workspaceRate
@@ -939,6 +1319,54 @@ integer
 
 ```jsonc
 100
+```
+
+# doc.packageName
+
+将特定名称的字段视为package，例如 `m_*` 意味着 `XXX.m_id` 与 `XXX.m_type` 只能在定义所在的文件中访问。
+
+## type
+
+```ts
+Array<string>
+```
+
+## default
+
+```jsonc
+[]
+```
+
+# doc.privateName
+
+将特定名称的字段视为私有，例如 `m_*` 意味着 `XXX.m_id` 与 `XXX.m_type` 是私有字段，只能在定义所在的类中访问。
+
+## type
+
+```ts
+Array<string>
+```
+
+## default
+
+```jsonc
+[]
+```
+
+# doc.protectedName
+
+将特定名称的字段视为受保护，例如 `m_*` 意味着 `XXX.m_id` 与 `XXX.m_type` 是受保护的字段，只能在定义所在的类极其子类中访问。
+
+## type
+
+```ts
+Array<string>
+```
+
+## default
+
+```jsonc
+[]
 ```
 
 # format.defaultConfig
@@ -1218,9 +1646,25 @@ integer
 1000
 ```
 
+# misc.executablePath
+
+VSCode中指定可执行文件路径。
+
+## type
+
+```ts
+string
+```
+
+## default
+
+```jsonc
+""
+```
+
 # misc.parameters
 
-VSCode中启动语言服务时的[命令行参数](https://github.com/sumneko/lua-language-server/wiki/Getting-Started#arguments)。
+VSCode中启动语言服务时的[命令行参数](https://luals.github.io/wiki/usage#arguments)。
 
 ## type
 
@@ -1232,6 +1676,22 @@ Array<string>
 
 ```jsonc
 []
+```
+
+# nameStyle.config
+
+设定命名风格检查的配置
+
+## type
+
+```ts
+Object<string, string | array>
+```
+
+## default
+
+```jsonc
+{}
 ```
 
 # runtime.builtin
@@ -1268,10 +1728,13 @@ object<string, string>
     "ffi": "default",
     "io": "default",
     "jit": "default",
+    "jit.profile": "default",
+    "jit.util": "default",
     "math": "default",
     "os": "default",
     "package": "default",
     "string": "default",
+    "string.buffer": "default",
     "table": "default",
     "table.clear": "default",
     "table.new": "default",
@@ -1394,7 +1857,7 @@ false
 
 # runtime.plugin
 
-插件路径，请查阅[文档](https://github.com/sumneko/lua-language-server/wiki/Plugins)了解用法。
+插件路径，请查阅[文档](https://luals.github.io/wiki/plugins)了解用法。
 
 ## type
 
@@ -1583,23 +2046,6 @@ Array<string>
 []
 ```
 
-# telemetry.enable
-
-启用遥测，通过网络发送你的编辑器信息与错误日志。在[此处](https://github.com/sumneko/lua-language-server/wiki/Home#privacy)阅读我们的隐私声明。
-
-
-## type
-
-```ts
-boolean | null
-```
-
-## default
-
-```jsonc
-null
-```
-
 # type.castNumberToInteger
 
 允许将 `number` 类型赋给 `integer` 类型。
@@ -1654,6 +2100,35 @@ boolean
 false
 ```
 
+# typeFormat.config
+
+Configures the formatting behavior while typing Lua code.
+
+## type
+
+```ts
+object<string, string>
+```
+
+## default
+
+```jsonc
+{
+    /*
+    Controls if `end` is automatically completed at suitable positions.
+    */
+    "auto_complete_end": "true",
+    /*
+    Controls if a separator is automatically appended at the end of a table declaration.
+    */
+    "auto_complete_table_sep": "true",
+    /*
+    Controls if a line is formatted at all.
+    */
+    "format_line": "true"
+}
+```
+
 # window.progressBar
 
 在状态栏显示进度条。
@@ -1701,13 +2176,20 @@ true
 ## type
 
 ```ts
-boolean
+string
 ```
+
+## enum
+
+* ``"Ask"``
+* ``"Apply"``
+* ``"ApplyInMemory"``
+* ``"Disable"``
 
 ## default
 
 ```jsonc
-true
+"Ask"
 ```
 
 # workspace.ignoreDir
@@ -1790,22 +2272,6 @@ integer
 500
 ```
 
-# workspace.supportScheme
-
-为以下 scheme 的lua文件提供语言服务。
-
-## type
-
-```ts
-Array<string>
-```
-
-## default
-
-```jsonc
-["file","untitled","git"]
-```
-
 # workspace.useGitIgnore
 
 忽略 `.gitignore` 中列举的文件。
@@ -1824,7 +2290,7 @@ true
 
 # workspace.userThirdParty
 
-在这里添加私有的第三方库适配文件路径，请参考内置的[配置文件路径](https://github.com/sumneko/lua-language-server/tree/master/meta/3rd)
+在这里添加私有的第三方库适配文件路径，请参考内置的[配置文件路径](https://github.com/LuaLS/lua-language-server/tree/master/meta/3rd)
 
 ## type
 

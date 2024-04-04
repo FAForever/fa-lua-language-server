@@ -13,6 +13,7 @@ local m = {}
 ---@field scp scope
 ---@field nameMap table<string, string>
 ---@field visibleCache table<string, require-manager.visibleResult[]>
+---@field requireCache table<string, table>
 local mt = {}
 mt.__index = mt
 
@@ -25,6 +26,7 @@ local function createRequireManager(scp)
         scp = scp,
         nameMap = {},
         visibleCache = {},
+        requireCache = {},
     }, mt)
 end
 
@@ -55,13 +57,26 @@ end
 ---@param path string
 ---@return require-manager.visibleResult[]
 function mt:getRequireResultByPath(path)
+    local vm  = require 'vm'
     local uri = furi.encode(path)
+    local result = {}
+    if vm.isMetaFile(uri) then
+        local metaName = vm.getMetaName(uri)
+        if metaName then
+            if vm.isMetaFileRequireable(uri) then
+                result[#result+1] = {
+                    name = metaName,
+                    searcher = '[[meta]]',
+                }
+            end
+            return result
+        end
+    end
     local searchers   = config.get(self.scp.uri, 'Lua.runtime.path')
     local strict      = config.get(self.scp.uri, 'Lua.runtime.pathStrict')
     local separator   = config.get(self.scp.uri, 'Lua.completion.requireSeparator')
     local libUri      = files.getLibraryUri(self.scp.uri, uri)
     local libraryPath = libUri and furi.decode(libUri)
-    local result = {}
     for _, searcher in ipairs(searchers) do
         local isAbsolute = searcher:match '^%a+%:'
         local startsWithSlash = searcher:match '^[/\\]'
@@ -107,7 +122,7 @@ function mt:getRequireResultByPath(path)
             cutedPath = currentPath:sub(pos)
             head = currentPath:sub(1, pos - 1)
             pos = currentPath:match('[/\\]+()', pos)
-            if platform.OS == 'Windows' then
+            if platform.os == 'windows' then
                 searcher = searcher :gsub('[/\\]+', '\\')
             else
                 searcher = searcher :gsub('[/\\]+', '/')
@@ -145,7 +160,7 @@ function mt:getVisiblePath(path)
     and not self.scp:isLinkedUri(uri) then
         return {}
     end
-    path = workspace.normalize(path)
+    path = files.normalize(path)
     local result = self.visibleCache[path]
     if not result then
         result = self:getRequireResultByPath(path)
@@ -155,20 +170,31 @@ function mt:getVisiblePath(path)
 end
 
 --- 查找符合指定require name的所有uri
----@param suri uri
 ---@param name string
 ---@return uri[]
 ---@return table<uri, string>?
-function mt:findUrisByRequireName(suri, name)
-    if type(name) ~= 'string' then
-        return {}
-    end
+function mt:searchUrisByRequireName(name)
+    local vm          = require 'vm'
     local searchers   = config.get(self.scp.uri, 'Lua.runtime.path')
     local strict      = config.get(self.scp.uri, 'Lua.runtime.pathStrict')
     local separator   = config.get(self.scp.uri, 'Lua.completion.requireSeparator')
     local path        = name:gsub('%' .. separator, '/'):lower()
     local results     = {}
     local searcherMap = {}
+    local excludes    = {}
+
+    for uri in files.eachFile(self.scp.uri) do
+        if vm.isMetaFileRequireable(uri) then
+            local metaName = vm.getMetaName(uri)
+            if metaName == name then
+                results[#results+1] = uri
+                return results
+            end
+            if metaName then
+                excludes[uri] = true
+            end
+        end
+    end
 
     for _, searcher in ipairs(searchers) do
         local startsWithSlash = searcher:match '^[/\\]'
@@ -194,12 +220,7 @@ function mt:findUrisByRequireName(suri, name)
                 and suri ~= uri
                 and util.stringEndWith(uri:lower(), tail) then
                     results[#results+1] = uri
-                    local parentUri = files.getLibraryUri(self.scp.uri, uri) or self.scp.uri
-                    if parentUri == nil or parentUri == '' then
-                        parentUri = furi.encode ''
-                    end
-                    local relative  = uri:sub(#parentUri + 1):sub(1, - #tail)
-                    searcherMap[uri] = workspace.normalize(relative .. searcher)
+                    searcherMap[uri] = files.normalize(relative .. searcher)
                 end
             end
         end
@@ -217,6 +238,35 @@ function mt:findUrisByRequireName(suri, name)
     return results, searcherMap
 end
 
+--- 查找符合指定require name的所有uri，并排除当前文件
+---@param suri uri
+---@param name string
+---@return uri[]
+---@return table<uri, string>?
+function mt:findUrisByRequireName(suri, name)
+    if type(name) ~= 'string' then
+        return {}
+    end
+    local cache = self.requireCache[name]
+    if not cache then
+        local results, searcherMap = self:searchUrisByRequireName(name)
+        cache = {
+            results = results,
+            searcherMap = searcherMap,
+        }
+        self.requireCache[name] = cache
+    end
+    local results = {}
+    local searcherMap = {}
+    for _, uri in ipairs(cache.results) do
+        if uri ~= suri then
+            results[#results+1] = uri
+            searcherMap[uri] = cache.searcherMap and cache.searcherMap[uri]
+        end
+    end
+    return results, searcherMap
+end
+
 ---@param uri uri
 ---@param path string
 ---@return require-manager.visibleResult[]
@@ -230,6 +280,8 @@ end
 
 ---@param uri uri
 ---@param name string
+---@return uri[]
+---@return table<uri, string>?
 function m.findUrisByRequireName(uri, name)
     local scp = scope.getScope(uri)
     ---@type require-manager
@@ -238,13 +290,41 @@ function m.findUrisByRequireName(uri, name)
     return mgr:findUrisByRequireName(uri, name)
 end
 
-files.watch(function (ev, uri)
-    if ev == 'create' or ev == 'delete' then
-        for _, scp in ipairs(workspace.folders) do
-            scp:set('requireManager', nil)
+---@param suri uri
+---@param uri uri
+---@param name string
+---@return boolean
+function m.isMatchedUri(suri, uri, name)
+    local searchers   = config.get(suri, 'Lua.runtime.path')
+    local strict      = config.get(suri, 'Lua.runtime.pathStrict')
+    local separator   = config.get(suri, 'Lua.completion.requireSeparator')
+    local path        = name:gsub('%' .. separator, '/')
+
+    for _, searcher in ipairs(searchers) do
+        local fspath = searcher:gsub('%?', (path:gsub('%%', '%%%%')))
+        fspath = files.normalize(fspath)
+        local tail = '/' .. furi.encode(fspath):gsub('^file:[/]*', '')
+        if util.stringEndWith(uri, tail) then
+            local parentUri = files.getLibraryUri(suri, uri) or uri
+            if parentUri == nil or parentUri == '' then
+                parentUri = furi.encode '/'
+            end
+            local relative = uri:sub(#parentUri + 1):sub(1, - #tail)
+            if not strict
+            or relative == '/'
+            or relative == '' then
+                return true
+            end
         end
-        scope.fallback:set('requireManager', nil)
     end
+    return false
+end
+
+files.watch(function (ev, uri)
+    for _, scp in ipairs(workspace.folders) do
+        scp:set('requireManager', nil)
+    end
+    scope.fallback:set('requireManager', nil)
 end)
 
 config.watch(function (uri, key, value, oldValue)

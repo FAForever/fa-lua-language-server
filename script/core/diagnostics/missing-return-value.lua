@@ -4,18 +4,6 @@ local vm     = require 'vm'
 local lang   = require 'language'
 local await  = require 'await'
 
-local function hasDocReturn(func)
-    if not func.bindDocs then
-        return false
-    end
-    for _, doc in ipairs(func.bindDocs) do
-        if doc.type == 'doc.return' then
-            return true
-        end
-    end
-    return false
-end
-
 ---@async
 return function (uri, callback)
     local state = files.getState(uri)
@@ -26,15 +14,12 @@ return function (uri, callback)
     ---@async
     guide.eachSourceType(state.ast, 'function', function (source)
         await.delay()
-        if not hasDocReturn(source) then
-            return
-        end
-        local min = vm.countReturnsOfFunction(source)
-        if min == 0 then
-            return
-        end
         local returns = source.returns
         if not returns then
+            return
+        end
+        local min = vm.countReturnsOfSource(source)
+        if min == 0 then
             return
         end
         for _, ret in ipairs(returns) do

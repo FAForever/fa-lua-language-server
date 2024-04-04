@@ -23,6 +23,8 @@ local vm        = require 'vm.vm'
 local m = {}
 m.cache = {}
 m.sleepRest = 0.0
+m.scopeDiagCount = 0
+m.pauseCount = 0
 
 local function concat(t, sep)
     if type(t) ~= 'table' then
@@ -32,8 +34,9 @@ local function concat(t, sep)
 end
 
 local function buildSyntaxError(uri, err)
-    local text    = files.getText(uri)
-    if not text then
+    local state = files.getState(uri)
+    local text  = files.getText(uri)
+    if not text or not state then
         return
     end
     local message = lang.script('PARSER_' .. err.type, err.info)
@@ -58,16 +61,19 @@ local function buildSyntaxError(uri, err)
                 rmessage = text:sub(rel.start, rel.finish)
             end
             local relUri = rel.uri or uri
-            relatedInformation[#relatedInformation+1] = {
-                message  = rmessage,
-                location = converter.location(relUri, converter.packRange(relUri, rel.start, rel.finish)),
-            }
+            local relState = files.getState(relUri)
+            if relState then
+                relatedInformation[#relatedInformation+1] = {
+                    message  = rmessage,
+                    location = converter.location(relUri, converter.packRange(relState, rel.start, rel.finish)),
+                }
+            end
         end
     end
 
     return {
         code     = err.type:lower():gsub('_', '-'),
-        range    = converter.packRange(uri, err.start, err.finish),
+        range    = converter.packRange(state, err.start, err.finish),
         severity = define.DiagnosticSeverity[err.level],
         source   = lang.script.DIAG_SYNTAX_CHECK,
         message  = message,
@@ -78,7 +84,8 @@ local function buildSyntaxError(uri, err)
 end
 
 local function buildDiagnostic(uri, diag)
-    if not files.exists(uri) then
+    local state = files.getState(uri)
+    if not state then
         return
     end
 
@@ -90,16 +97,20 @@ local function buildDiagnostic(uri, diag)
             if not rtext then
                 goto CONTINUE
             end
+            local relState = files.getState(rel.uri)
+            if not relState then
+                goto CONTINUE
+            end
             relatedInformation[#relatedInformation+1] = {
                 message  = rel.message or rtext:sub(rel.start, rel.finish),
-                location = converter.location(rel.uri, converter.packRange(rel.uri, rel.start, rel.finish))
+                location = converter.location(rel.uri, converter.packRange(relState, rel.start, rel.finish))
             }
             ::CONTINUE::
         end
     end
 
     return {
-        range    = converter.packRange(uri, diag.start, diag.finish),
+        range    = converter.packRange(state, diag.start, diag.finish),
         source   = lang.script.DIAG_DIAGNOSTICS,
         severity = diag.level,
         message  = diag.message,
@@ -172,14 +183,24 @@ function m.clearCacheExcept(uris)
     end
 end
 
-function m.clearAll(force)
+---@param uri? uri
+---@param force? boolean
+function m.clearAll(uri, force)
+    local scp
+    if uri then
+        scp = scope.getScope(uri)
+    end
     if force then
         for luri in files.eachFile() do
-            m.clear(luri, force)
+            if not scp or scope.getScope(luri) == scp then
+                m.clear(luri, force)
+            end
         end
     else
         for luri in pairs(m.cache) do
-            m.clear(luri)
+            if not scp or scope.getScope(luri) == scp then
+                m.clear(luri)
+            end
         end
     end
 end
@@ -293,6 +314,11 @@ function m.doDiagnostic(uri, isScopeDiag)
         end
         m.cache[uri] = full
 
+        if not files.exists(uri) then
+            m.clear(uri)
+            return
+        end
+
         proto.notify('textDocument/publishDiagnostics', {
             uri = uri,
             version = version,
@@ -332,6 +358,11 @@ end
 function m.resendDiagnostic(uri)
     local full = m.cache[uri]
     if not full then
+        return
+    end
+
+    if not files.exists(uri) then
+        m.clear(uri)
         return
     end
 
@@ -382,6 +413,37 @@ function m.pullDiagnostic(uri, isScopeDiag)
 end
 
 ---@param uri uri
+function m.stopScopeDiag(uri)
+    local scp     = scope.getScope(uri)
+    local scopeID = 'diagnosticsScope:' .. scp:getName()
+    await.close(scopeID)
+end
+
+---@param event string
+---@param uri uri
+function m.refreshScopeDiag(event, uri)
+    if not ws.isReady(uri) then
+        return
+    end
+
+    local eventConfig = config.get(uri, 'Lua.diagnostics.workspaceEvent')
+
+    if eventConfig ~= event then
+        return
+    end
+
+    ---@async
+    await.call(function ()
+        local delay = config.get(uri, 'Lua.diagnostics.workspaceDelay') / 1000
+        if delay < 0 then
+            return
+        end
+        await.sleep(math.max(delay, 0.2))
+        m.diagnosticsScope(uri)
+    end)
+end
+
+---@param uri uri
 function m.refresh(uri)
     if not ws.isReady(uri) then
         return
@@ -391,21 +453,10 @@ function m.refresh(uri)
     ---@async
     await.call(function ()
         await.setID('diag:' .. uri)
-        await.sleep(0.1)
+        repeat
+            await.sleep(0.1)
+        until not m.isPaused()
         xpcall(m.doDiagnostic, log.error, uri)
-    end)
-
-    local scp     = scope.getScope(uri)
-    local scopeID = 'diagnosticsScope:' .. scp:getName()
-    await.close(scopeID)
-    ---@async
-    await.call(function ()
-        local delay = config.get(uri, 'Lua.diagnostics.workspaceDelay') / 1000
-        if delay < 0 then
-            return
-        end
-        await.sleep(math.max(delay, 0.2))
-        m.diagnosticsScope(uri)
     end)
 end
 
@@ -457,12 +508,32 @@ local function askForDisable(uri)
     end
 end
 
+local function clearMemory(finished)
+    if m.scopeDiagCount > 0 then
+        return
+    end
+    vm.clearNodeCache()
+    if finished then
+        collectgarbage()
+        collectgarbage()
+    end
+end
+
 ---@async
 function m.awaitDiagnosticsScope(suri, callback)
     local scp = scope.getScope(suri)
+    if scp.type == 'fallback' then
+        return
+    end
     while loading.count() > 0 do
         await.sleep(1.0)
     end
+    local finished
+    m.scopeDiagCount = m.scopeDiagCount + 1
+    local scopeDiag <close> = util.defer(function ()
+        m.scopeDiagCount = m.scopeDiagCount - 1
+        clearMemory(finished)
+    end)
     local clock = os.clock()
     local bar <close> = progress.create(suri, lang.script.WORKSPACE_DIAGNOSTIC, 1)
     local cancelled
@@ -501,6 +572,7 @@ function m.awaitDiagnosticsScope(suri, callback)
     end
     bar:remove()
     log.info(('Diagnostics scope [%s] finished, takes [%.3f] sec.'):format(scp:getName(), os.clock() - clock))
+    finished = true
 end
 
 function m.diagnosticsScope(uri, force)
@@ -508,7 +580,10 @@ function m.diagnosticsScope(uri, force)
         return
     end
     if not force and not config.get(uri, 'Lua.diagnostics.enable') then
-        m.clearAll()
+        m.clearAll(uri)
+        return
+    end
+    if not force and config.get(uri, 'Lua.diagnostics.workspaceDelay') < 0 then
         return
     end
     local scp = scope.getScope(uri)
@@ -567,8 +642,27 @@ function m.pullDiagnosticScope(callback)
 end
 
 function m.refreshClient()
+    if not client.isReady() then
+        return
+    end
+    if not client.getAbility 'workspace.diagnostics.refreshSupport' then
+        return
+    end
     log.debug('Refresh client diagnostics')
     proto.request('workspace/diagnostic/refresh', json.null)
+end
+
+---@return boolean
+function m.isPaused()
+    return m.pauseCount > 0
+end
+
+function m.pause()
+    m.pauseCount = m.pauseCount + 1
+end
+
+function m.resume()
+    m.pauseCount = m.pauseCount - 1
 end
 
 ws.watch(function (ev, uri)
@@ -581,9 +675,17 @@ end)
 files.watch(function (ev, uri) ---@async
     if ev == 'remove' then
         m.clear(uri)
+        m.stopScopeDiag(uri)
         m.refresh(uri)
+        m.refreshScopeDiag('OnSave', uri)
+    elseif ev == 'create' then
+        m.stopScopeDiag(uri)
+        m.refresh(uri)
+        m.refreshScopeDiag('OnSave', uri)
     elseif ev == 'update' then
+        m.stopScopeDiag(uri)
         m.refresh(uri)
+        m.refreshScopeDiag('OnChange', uri)
     elseif ev == 'open' then
         if ws.isReady(uri) then
             m.resendDiagnostic(uri)
@@ -594,12 +696,15 @@ files.watch(function (ev, uri) ---@async
         or ws.isIgnored(uri) then
             m.clear(uri)
         end
+    elseif ev == 'save' then
+        m.refreshScopeDiag('OnSave', uri)
     end
 end)
 
 config.watch(function (uri, key, value, oldValue)
-    if util.stringStartWith(key,  'Lua.diagnostics')
-    or util.stringStartWith(key,  'Lua.spell') then
+    if util.stringStartWith(key, 'Lua.diagnostics')
+    or util.stringStartWith(key, 'Lua.spell')
+    or util.stringStartWith(key, 'Lua.doc') then
         if value ~= oldValue then
             m.diagnosticsScope(uri)
             m.refreshClient()

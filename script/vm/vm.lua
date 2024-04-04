@@ -9,8 +9,6 @@ local mathHuge       = math.huge
 
 local weakMT = { __mode = 'kv' }
 
-_ENV = nil
-
 ---@class vm
 local m = {}
 
@@ -23,6 +21,7 @@ function m.getSpecial(source)
     return source.special
 end
 
+---@param source parser.object
 ---@return string?
 function m.getKeyName(source)
     if not source then

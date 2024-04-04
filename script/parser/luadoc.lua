@@ -63,7 +63,7 @@ Symbol              <-  ({} {
                         } {})
                     ->  Symbol
 ]], {
-    s  = m.S' \t',
+    s  = m.S' \t\v\f',
     ea = '\a',
     eb = '\b',
     ef = '\f',
@@ -137,17 +137,26 @@ Symbol              <-  ({} {
     end,
 })
 
+---@alias parser.visibleType 'public' | 'protected' | 'private' | 'package'
+
 ---@class parser.object
----@field literal boolean
----@field signs parser.object[]
----@field originalComment parser.object
----@field as? parser.object
----@field touch? integer
----@field module? string
----@field async? boolean
----@field versions? table[]
----@field names? parser.object[]
----@field path? string
+---@field literal           boolean
+---@field signs             parser.object[]
+---@field originalComment   parser.object
+---@field as?               parser.object
+---@field touch?            integer
+---@field module?           string
+---@field async?            boolean
+---@field versions?         table[]
+---@field names?            parser.object[]
+---@field path?             string
+---@field bindComments?     parser.object[]
+---@field visible?          parser.visibleType
+---@field operators?        parser.object[]
+---@field calls?            parser.object[]
+---@field generics?         parser.object[]
+---@field generic?          parser.object
+---@field docAttr?          parser.object
 
 local function parseTokens(text, offset)
     Ci = 0
@@ -161,8 +170,9 @@ local function parseTokens(text, offset)
     Ci = 0
 end
 
-local function peekToken()
-    return TokenTypes[Ci+1], TokenContents[Ci+1]
+local function peekToken(offset)
+    offset = offset or 1
+    return TokenTypes[Ci + offset], TokenContents[Ci + offset]
 end
 
 ---@return string? tokenType
@@ -243,30 +253,48 @@ local function nextSymbolOrError(symbol)
     return false
 end
 
-local function parseIndexField(tp, parent)
+local function parseDocAttr(parent)
+    if not checkToken('symbol', '(', 1) then
+        return nil
+    end
+    nextToken()
+
+    local attrs = {
+        type   = 'doc.attr',
+        parent = parent,
+        start  = getStart(),
+        finish = getStart(),
+        names  = {},
+    }
+
+    while true do
+        if checkToken('symbol', ',', 1) then
+            nextToken()
+            goto continue
+        end
+        local name = parseName('doc.attr.name', attrs)
+        if not name then
+            break
+        end
+        attrs.names[#attrs.names+1] = name
+        attrs.finish = name.finish
+        ::continue::
+    end
+
+    nextSymbolOrError(')')
+    attrs.finish = getFinish()
+
+    return attrs
+end
+
+local function parseIndexField(parent)
     if not checkToken('symbol', '[', 1) then
         return nil
     end
     nextToken()
-    local start = getFinish() - 1
-    local indexTP, index = peekToken()
-    if indexTP == 'name' then
-        local field = parseType(parent)
-        nextSymbolOrError ']'
-        return field
-    else
-        nextToken()
-        local class = {
-            type   = tp,
-            start  = start,
-            finish = getFinish(),
-            parent = parent,
-        }
-        class[1] = index
-        nextSymbolOrError ']'
-        class.finish = getFinish()
-        return class
-    end
+    local field = parseType(parent)
+    nextSymbolOrError ']'
+    return field
 end
 
 local function parseTable(parent)
@@ -298,7 +326,7 @@ local function parseTable(parent)
                 needCloseParen = true
             end
             field.name = parseName('doc.field.name', field)
-                    or   parseIndexField('doc.field.name', field)
+                    or   parseIndexField(field)
             if not field.name then
                 pushWarning {
                     type   = 'LUADOC_MISS_FIELD_NAME',
@@ -334,6 +362,78 @@ local function parseTable(parent)
             nextToken()
         else
             nextSymbolOrError('}')
+            break
+        end
+    end
+    typeUnit.finish = getFinish()
+    return typeUnit
+end
+
+local function parseTuple(parent)
+    if not checkToken('symbol', '[', 1) then
+        return nil
+    end
+    nextToken()
+    local typeUnit = {
+        type    = 'doc.type.table',
+        start   = getStart(),
+        parent  = parent,
+        fields  = {},
+        isTuple = true,
+    }
+
+    local index = 1
+    while true do
+        if checkToken('symbol', ']', 1) then
+            nextToken()
+            break
+        end
+        local field = {
+            type   = 'doc.type.field',
+            parent = typeUnit,
+        }
+
+        do
+            local needCloseParen
+            if checkToken('symbol', '(', 1) then
+                nextToken()
+                needCloseParen = true
+            end
+            field.name = {
+                type        = 'doc.type',
+                start       = getFinish(),
+                firstFinish = getFinish(),
+                finish      = getFinish(),
+                parent      = field,
+            }
+            field.name.types = {
+                [1] = {
+                    type   = 'doc.type.integer',
+                    start  = getFinish(),
+                    finish = getFinish(),
+                    parent = field.name,
+                    [1]    = index,
+                }
+            }
+            index          = index + 1
+            field.extends  = parseType(field)
+            if not field.extends then
+                break
+            end
+            field.optional = field.extends.optional
+            field.start    = field.extends.start
+            field.finish   = field.extends.finish
+            if needCloseParen then
+                nextSymbolOrError ')'
+            end
+        end
+
+        typeUnit.fields[#typeUnit.fields+1] = field
+        if checkToken('symbol', ',', 1)
+        or checkToken('symbol', ';', 1) then
+            nextToken()
+        else
+            nextSymbolOrError(']')
             break
         end
     end
@@ -605,6 +705,53 @@ local function parseCode(parent)
     return code
 end
 
+local function parseCodePattern(parent)
+    local tp, pattern = peekToken()
+    if not tp or tp ~= 'name' then
+        return nil
+    end
+    local codeOffset
+    local finishOffset
+    local content
+    for i = 2, 8 do
+        local next, nextContent = peekToken(i)
+        if not next or TokenFinishs[Ci+i-1] + 1 ~= TokenStarts[Ci+i] then
+            if codeOffset then
+                finishOffset = i
+                break
+            end
+            ---不连续的name，无效的
+            return nil
+        end
+        if next == 'code' then
+            if codeOffset and content ~= nextContent then
+                -- 暂时不支持多generic
+                return nil
+            end
+            codeOffset = i
+            pattern = pattern .. "%s"
+            content = nextContent
+        elseif next ~= 'name' then
+            return nil
+        else
+            pattern = pattern .. nextContent
+        end
+    end
+    local start = getStart()
+    for i = 2 , finishOffset do
+        nextToken()
+    end
+    local code = {
+        type   = 'doc.type.code',
+        start  = start,
+        finish = getFinish(),
+        parent = parent,
+        pattern = pattern,
+        [1]    = content,
+    }
+    return code
+end
+
 local function parseInteger(parent)
     local tp, content = peekToken()
     if not tp or tp ~= 'integer' then
@@ -654,11 +801,13 @@ end
 function parseTypeUnit(parent)
     local result = parseFunction(parent)
                 or parseTable(parent)
+                or parseTuple(parent)
                 or parseString(parent)
                 or parseCode(parent)
                 or parseInteger(parent)
                 or parseBoolean(parent)
                 or parseParen(parent)
+                or parseCodePattern(parent)
     if not result then
         result = parseName('doc.type.name', parent)
               or parseDots('doc.type.name', parent)
@@ -706,6 +855,8 @@ local function parseResume(parent)
 
     return result
 end
+
+local lockResume = false
 
 function parseType(parent)
     local result = {
@@ -767,7 +918,7 @@ function parseType(parent)
                         if comments then
                             resume.comment = table.concat(comments, '\n')
                         else
-                            resume.comment = nextComm.text:match('#%s*(.+)', #resumeHead + 1)
+                            resume.comment = nextComm.text:match('%s*#?%s*(.+)', resume.finish - nextComm.start)
                         end
                         result.types[#result.types+1] = resume
                         result.finish = resume.finish
@@ -785,20 +936,10 @@ function parseType(parent)
         return false
     end
 
-    local checkResume = true
-    local nsymbol, ncontent = peekToken()
-    if nsymbol == 'symbol' then
-        if ncontent == ','
-        or ncontent == ':'
-        or ncontent == '|'
-        or ncontent == ')'
-        or ncontent == '}' then
-            checkResume = false
-        end
-    end
-
-    if checkResume then
+    if not lockResume then
+        lockResume = true
         while pushResume() do end
+        lockResume = false
     end
 
     if #result.types == 0 then
@@ -819,7 +960,9 @@ local docSwitch = util.switch()
             type      = 'doc.class',
             fields    = {},
             operators = {},
+            calls     = {},
         }
+        result.docAttr = parseDocAttr(result)
         result.class = parseName('doc.class.name', result)
         if not result.class then
             pushWarning {
@@ -842,6 +985,7 @@ local docSwitch = util.switch()
         while true do
             local extend = parseName('doc.extends.name', result)
                         or parseTable(result)
+                        or parseTuple(result)
             if not extend then
                 pushWarning {
                     type   = 'LUADOC_MISS_CLASS_EXTENDS_NAME',
@@ -989,7 +1133,13 @@ local docSwitch = util.switch()
             if tp == 'name' then
                 if value == 'public'
                 or value == 'protected'
-                or value == 'private' then
+                or value == 'private'
+                or value == 'package' then
+                    local tp2 = peekToken(1)
+                    local tp3 = peekToken(2)
+                    if tp2 == 'name' and not tp3 then
+                        return false
+                    end
                     result.visible = value
                     result.start = getStart()
                     return true
@@ -998,7 +1148,7 @@ local docSwitch = util.switch()
             return false
         end)
         result.field = parseName('doc.field.name', result)
-                    or parseIndexField('doc.field.name', result)
+                    or parseIndexField(result)
         if not result.field then
             pushWarning {
                 type   = 'LUADOC_MISS_FIELD_NAME',
@@ -1116,11 +1266,13 @@ local docSwitch = util.switch()
     end)
     : case 'meta'
     : call(function ()
-        return {
+        local meta = {
             type   = 'doc.meta',
             start  = getFinish(),
             finish = getFinish(),
         }
+        meta.name = parseName('doc.meta.name', meta)
+        return meta
     end)
     : case 'export-env'
     : call(function ()
@@ -1199,15 +1351,15 @@ local docSwitch = util.switch()
         }
         result.name = parseName('doc.see.name', result)
         if not result.name then
+            pushWarning {
+                type  = 'LUADOC_MISS_SEE_NAME',
+                start  = getFinish(),
+                finish = getFinish(),
+            }
             return nil
         end
-        result.start = result.name.start
+        result.start  = result.name.start
         result.finish = result.name.finish
-        if checkToken('symbol', '#', 1) then
-            nextToken()
-            result.field = parseName('doc.see.field', result)
-            result.finish = getFinish()
-        end
         return result
     end)
     : case 'diagnostic'
@@ -1332,7 +1484,7 @@ local docSwitch = util.switch()
             return result
         end
 
-        result.loc    = loc
+        result.name   = loc
         result.finish = loc.finish
 
         while true do
@@ -1402,12 +1554,16 @@ local docSwitch = util.switch()
 
         if checkToken('symbol', '(', 1) then
             nextToken()
-            local exp = parseType(result)
-            if exp then
-                result.exp = exp
-                result.finish = exp.finish
+            if checkToken('symbol', ')', 1) then
+                nextToken()
+            else
+                local exp = parseType(result)
+                if exp then
+                    result.exp = exp
+                    result.finish = exp.finish
+                end
+                nextSymbolOrError ')'
             end
-            nextSymbolOrError ')'
         end
 
         nextSymbolOrError ':'
@@ -1446,18 +1602,55 @@ local docSwitch = util.switch()
     end)
     : case 'enum'
     : call(function ()
+        local attr = parseDocAttr()
         local name = parseName('doc.enum.name')
         if not name then
             return nil
         end
         local result = {
-            type   = 'doc.enum',
-            start  = name.start,
-            finish = name.finish,
-            enum   = name,
+            type    = 'doc.enum',
+            start   = name.start,
+            finish  = name.finish,
+            enum    = name,
+            docAttr = attr,
         }
         name.parent = result
+        if attr then
+            attr.parent = result
+        end
         return result
+    end)
+    : case 'private'
+    : call(function ()
+        return {
+            type   = 'doc.private',
+            start  = getFinish(),
+            finish = getFinish(),
+        }
+    end)
+    : case 'protected'
+    : call(function ()
+        return {
+            type   = 'doc.protected',
+            start  = getFinish(),
+            finish = getFinish(),
+        }
+    end)
+    : case 'public'
+    : call(function ()
+        return {
+            type   = 'doc.public',
+            start  = getFinish(),
+            finish = getFinish(),
+        }
+    end)
+    : case 'package'
+    : call(function ()
+        return {
+            type   = 'doc.package',
+            start  = getFinish(),
+            finish = getFinish(),
+        }
     end)
 
 local function convertTokens(doc)
@@ -1479,21 +1672,22 @@ end
 local function trimTailComment(text)
     local comment = text
     if text:sub(1, 1) == '@' then
-        comment = text:sub(2)
+        comment = util.trim(text:sub(2))
     end
     if text:sub(1, 1) == '#' then
-        comment = text:sub(2)
+        comment = util.trim(text:sub(2))
     end
     if text:sub(1, 2) == '--' then
-        comment = text:sub(3)
+        comment = util.trim(text:sub(3))
     end
-    if comment:find '^%s*[\'"[]' then
+    if  comment:find '^%s*[\'"[]'
+    and comment:find '[\'"%]]%s*$' then
         local state = compile(comment:gsub('^%s+', ''), 'String')
         if state and state.ast then
-            comment = state.ast[1]
+            comment = state.ast[1] --[[@as string]]
         end
     end
-    return comment
+    return util.trim(comment)
 end
 
 local function buildLuaDoc(comment)
@@ -1509,13 +1703,17 @@ local function buildLuaDoc(comment)
             comment = comment,
         }
     end
+    local startOffset = comment.start
+    if comment.type == 'comment.long' then
+        startOffset = startOffset + #comment.mark - 2
+    end
 
     local doc = text:sub(startPos)
 
-    parseTokens(doc, comment.start + startPos)
+    parseTokens(doc, startOffset + startPos)
     local result, rests = convertTokens(doc)
     if result then
-        result.range = comment.finish
+        result.range = math.max(comment.finish, result.finish)
         local finish = result.firstFinish or result.finish
         if rests then
             for _, rest in ipairs(rests) do
@@ -1610,7 +1808,7 @@ local function bindGeneric(binded)
         if doc.type == 'doc.generic' then
             for _, obj in ipairs(doc.generics) do
                 local name = obj.generic[1]
-                generics[name] = true
+                generics[name] = obj
             end
         end
         if doc.type == 'doc.class'
@@ -1618,7 +1816,7 @@ local function bindGeneric(binded)
             if doc.signs then
                 for _, sign in ipairs(doc.signs) do
                     local name = sign[1]
-                    generics[name] = true
+                    generics[name] = sign
                 end
             end
         end
@@ -1632,6 +1830,7 @@ local function bindGeneric(binded)
                 local name = src[1]
                 if generics[name] then
                     src.type = 'doc.generic.name'
+                    src.generic = generics[name]
                 end
             end)
             guide.eachSourceType(doc, 'doc.type.code', function (src)
@@ -1643,6 +1842,16 @@ local function bindGeneric(binded)
             end)
         end
     end
+end
+
+local function bindDocWithSource(doc, source)
+    if not source.bindDocs then
+        source.bindDocs = {}
+    end
+    if source.bindDocs[#source.bindDocs] ~= doc then
+        source.bindDocs[#source.bindDocs+1] = doc
+    end
+    doc.bindSource = source
 end
 
 local function bindDoc(source, binded)
@@ -1662,11 +1871,18 @@ local function bindDoc(source, binded)
         or doc.type == 'doc.deprecated'
         or doc.type == 'doc.version'
         or doc.type == 'doc.module'
-        or doc.type == 'doc.source' then
+        or doc.type == 'doc.source'
+        or doc.type == 'doc.private'
+        or doc.type == 'doc.protected'
+        or doc.type == 'doc.public'
+        or doc.type == 'doc.package'
+        or doc.type == 'doc.see' then
             if source.type == 'function'
             or isParam then
                 goto CONTINUE
             end
+            bindDocWithSource(doc, source)
+            ok = true
         elseif doc.type == 'doc.type' then
             if source.type == 'function'
             or isParam
@@ -1674,69 +1890,70 @@ local function bindDoc(source, binded)
                 goto CONTINUE
             end
             source._bindedDocType = true
+            bindDocWithSource(doc, source)
+            ok = true
         elseif doc.type == 'doc.overload' then
             if not source.bindDocs then
                 source.bindDocs = {}
             end
             source.bindDocs[#source.bindDocs+1] = doc
-            if source.type ~= 'function' then
-                doc.bindSource = source
+            if source.type == 'function' then
+                bindDocWithSource(doc, source)
             end
+            ok = true
         elseif doc.type == 'doc.param' then
-            local suc
             if  isParam
             and doc.param[1] == source[1] then
-                suc = true
+                bindDocWithSource(doc, source)
+                ok = true
             elseif source.type == '...'
             and    doc.param[1] == '...' then
-                suc = true
+                bindDocWithSource(doc, source)
+                ok = true
             elseif source.type == 'self'
             and    doc.param[1] == 'self' then
-                suc = true
-            end
-            if source.type == 'function' then
+                bindDocWithSource(doc, source)
+                ok = true
+            elseif source.type == 'function' then
                 if not source.bindDocs then
                     source.bindDocs = {}
                 end
-                source.bindDocs[#source.bindDocs+1] = doc
-            end
-
-            if not suc then
-                goto CONTINUE
+                source.bindDocs[#source.bindDocs + 1] = doc
+                if source.args then
+                    for _, arg in ipairs(source.args) do
+                        if arg[1] == doc.param[1] then
+                            bindDocWithSource(doc, arg)
+                            break
+                        end
+                    end
+                end
             end
         elseif doc.type == 'doc.vararg' then
-            if source.type ~= '...' then
-                goto CONTINUE
+            if source.type == '...' then
+                bindDocWithSource(doc, source)
+                ok = true
             end
         elseif doc.type == 'doc.return'
         or     doc.type == 'doc.generic'
         or     doc.type == 'doc.async'
         or     doc.type == 'doc.nodiscard' then
-            if source.type ~= 'function' then
-                goto CONTINUE
+            if source.type == 'function' then
+                bindDocWithSource(doc, source)
+                ok = true
             end
         elseif doc.type == 'doc.enum' then
             if source.type == 'table' then
-                goto OK
+                bindDocWithSource(doc, source)
+                ok = true
             end
             if source.value and source.value.type == 'table' then
-                if not source.value.bindDocs then
-                    source.value.bindDocs = {}
-                end
-                source.value.bindDocs[#source.value.bindDocs+1] = doc
-                doc.bindSource = source.value
+                bindDocWithSource(doc, source.value)
+                goto CONTINUE
             end
-            goto CONTINUE
-        elseif doc.type ~= 'doc.comment' then
-            goto CONTINUE
+        elseif doc.type == 'doc.comment' then
+            bindDocWithSource(doc, source)
+            ok = true
         end
-        ::OK::
-        if not source.bindDocs then
-            source.bindDocs = {}
-        end
-        source.bindDocs[#source.bindDocs+1] = doc
-        doc.bindSource = source
-        ok = true
         ::CONTINUE::
     end
     return ok
@@ -1784,7 +2001,7 @@ local function bindDocsBetween(sources, binded, start, finish)
                 or src.type == 'setindex'
                 or src.type == 'setmethod'
                 or src.type == 'function'
-                or src.type == 'table'
+                or src.type == 'return'
                 or src.type == '...' then
                     if bindDoc(src, binded) then
                         ok = true
@@ -1851,6 +2068,11 @@ local function bindCommentsAndFields(binded)
             end
             bindCommentsToDoc(doc, comments)
             comments = {}
+        elseif doc.type == 'doc.overload' then
+            if class then
+                class.calls[#class.calls+1] = doc
+                doc.class = class
+            end
         elseif doc.type == 'doc.alias'
         or     doc.type == 'doc.enum' then
             bindCommentsToDoc(doc, comments)
@@ -1880,6 +2102,14 @@ local function bindDocWithSources(sources, binded)
     bindGeneric(binded)
     bindCommentsAndFields(binded)
     bindReturnIndex(binded)
+    
+    -- doc is special node
+    if lastDoc.special then
+        if bindDoc(lastDoc.special, binded) then
+            return
+        end
+    end
+
     local row = guide.rowColOf(lastDoc.finish)
     local suc = bindDocsBetween(sources, binded, guide.positionOf(row, 0), lastDoc.start)
     if not suc then
@@ -1891,7 +2121,7 @@ local bindDocAccept = {
     'local'     , 'setlocal'  , 'setglobal',
     'setfield'  , 'setmethod' , 'setindex' ,
     'tablefield', 'tableindex', 'self'     ,
-    'function'  , 'table'     , '...'      ,
+    'function'  , 'return'     , '...'      ,
 }
 
 local function bindDocs(state)
@@ -1910,12 +2140,16 @@ local function bindDocs(state)
             state.ast.docs.groups[#state.ast.docs.groups+1] = binded
         end
         binded[#binded+1] = doc
-        if isTailComment(text, doc) then
+		if doc.specialBindGroup then
+			bindDocWithSources(sources, doc.specialBindGroup)
+			binded = nil
+		elseif isTailComment(text, doc) and doc.type ~= "doc.class" and doc.type ~= "doc.field" then
             bindDocWithSources(sources, binded)
             binded = nil
         else
             local nextDoc = state.ast.docs[i+1]
-            if not isNextLine(doc, nextDoc) then
+            if nextDoc and nextDoc.special
+            or not isNextLine(doc, nextDoc) then
                 bindDocWithSources(sources, binded)
                 binded = nil
             end
@@ -1944,7 +2178,7 @@ local function findTouch(state, doc)
     end
 end
 
-return function (state)
+local function luadoc(state)
     local ast = state.ast
     local comments = state.comms
     table.sort(comments, function (a, b)
@@ -1957,8 +2191,19 @@ return function (state)
     }
 
     pushWarning = function (err)
+        local errs = state.errs
+        if err.finish < err.start then
+            err.finish = err.start
+        end
+        local last = errs[#errs]
+        if last then
+            if last.start <= err.start and last.finish >= err.finish then
+                return
+            end
+        end
         err.level = err.level or 'Warning'
-        state.pushError(err)
+        errs[#errs+1] = err
+        return err
     end
     Lines       = state.lines
 
@@ -1991,6 +2236,7 @@ return function (state)
         if not comment then
             break
         end
+        lockResume = false
         local doc, rests = buildLuaDoc(comment)
         if doc then
             insertDoc(doc, comment)
@@ -2002,6 +2248,18 @@ return function (state)
         end
     end
 
+    if ast.state.pluginDocs then
+        for i, doc in ipairs(ast.state.pluginDocs) do
+            insertDoc(doc, doc.originalComment)
+        end
+        ---@param a unknown
+        ---@param b unknown
+        table.sort(ast.docs, function (a, b)
+            return a.start < b.start
+        end)
+        ast.state.pluginDocs = nil
+    end
+
     ast.docs.start  = ast.start
     ast.docs.finish = ast.finish
 
@@ -2011,3 +2269,21 @@ return function (state)
 
     bindDocs(state)
 end
+
+return {
+    buildAndBindDoc = function (ast, src, comment, group)
+        local doc = buildLuaDoc(comment)
+        if doc then
+            local pluginDocs = ast.state.pluginDocs or {}
+            pluginDocs[#pluginDocs+1] = doc
+            doc.special = src
+            doc.originalComment = comment
+            doc.virtual = true
+			doc.specialBindGroup = group
+            ast.state.pluginDocs = pluginDocs
+            return doc
+        end
+        return nil
+    end,
+    luadoc = luadoc
+}

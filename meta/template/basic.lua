@@ -1,4 +1,4 @@
----@meta
+---@meta _
 
 ---#DES 'arg'
 ---@type string[]
@@ -8,27 +8,30 @@ arg = {}
 ---@generic T
 ---@param v? T
 ---@param message? any
+---@param ... any
 ---@return T
-function assert(v, message) end
+---@return any ...
+function assert(v, message, ...) end
 
 ---@alias gcoptions
----|>'"collect"'      # ---#DESTAIL 'cgopt.collect'
----| '"stop"'         # ---#DESTAIL 'cgopt.stop'
----| '"restart"'      # ---#DESTAIL 'cgopt.restart'
----| '"count"'        # ---#DESTAIL 'cgopt.count'
----| '"step"'         # ---#DESTAIL 'cgopt.step'
----| '"isrunning"'    # ---#DESTAIL 'cgopt.isrunning'
+---|>"collect"      # ---#DESTAIL 'cgopt.collect'
+---| "stop"         # ---#DESTAIL 'cgopt.stop'
+---| "restart"      # ---#DESTAIL 'cgopt.restart'
+---| "count"        # ---#DESTAIL 'cgopt.count'
+---| "step"         # ---#DESTAIL 'cgopt.step'
+---| "isrunning"    # ---#DESTAIL 'cgopt.isrunning'
 ---#if VERSION >= 5.4 then
----| '"incremental"'  # ---#DESTAIL 'cgopt.incremental'
----| '"generational"' # ---#DESTAIL 'cgopt.generational'
+---| "incremental"  # ---#DESTAIL 'cgopt.incremental'
+---| "generational" # ---#DESTAIL 'cgopt.generational'
 ---#else
----| '"setpause"'     # ---#DESTAIL 'cgopt.setpause'
----| '"setstepmul"'   # ---#DESTAIL 'cgopt.setstepmul'
+---| "setpause"     # ---#DESTAIL 'cgopt.setpause'
+---| "setstepmul"   # ---#DESTAIL 'cgopt.setstepmul'
 ---#end
 
 ---#if VERSION >= 5.4 then
 ---#DES 'collectgarbage'
 ---@param opt? gcoptions
+---@param ... any
 ---@return any
 function collectgarbage(opt, ...) end
 ---#else
@@ -55,7 +58,7 @@ _G = {}
 
 ---@version 5.1
 ---#DES 'getfenv'
----@param f? integer|async fun()
+---@param f? integer|async fun(...):...
 ---@return table
 ---@nodiscard
 function getfenv(f) end
@@ -75,9 +78,9 @@ function getmetatable(object) end
 function ipairs(t) end
 
 ---@alias loadmode
----| '"b"'  # ---#DESTAIL 'loadmode.b'
----| '"t"'  # ---#DESTAIL 'loadmode.t'
----|>'"bt"' # ---#DESTAIL 'loadmode.bt'
+---| "b"  # ---#DESTAIL 'loadmode.b'
+---| "t"  # ---#DESTAIL 'loadmode.t'
+---|>"bt" # ---#DESTAIL 'loadmode.bt'
 
 ---#if VERSION <= 5.1 and not JIT then
 ---#DES 'load<5.1'
@@ -127,7 +130,7 @@ function loadfile(filename, mode, env) end
 function loadstring(text, chunkname) end
 
 ---@version 5.1
----@param proxy boolean|table
+---@param proxy boolean|table|userdata
 ---@return userdata
 ---@nodiscard
 function newproxy(proxy) end
@@ -135,6 +138,7 @@ function newproxy(proxy) end
 ---@version 5.1
 ---#DES 'module'
 ---@param name string
+---@param ...  any
 function module(name, ...) end
 
 ---#DES 'next'
@@ -157,15 +161,17 @@ function pairs(t) end
 ---#if VERSION == 5.1 and not JIT then
 ---@param f     function
 ---#else
----@param f     async fun()
+---@param f     async fun(...):...
 ---#end
 ---@param arg1? any
+---@param ...   any
 ---@return boolean success
 ---@return any result
----@return ...
+---@return any ...
 function pcall(f, arg1, ...) end
 
 ---#DES 'print'
+---@param ... any
 function print(...) end
 
 ---#DES 'rawequal'
@@ -196,21 +202,62 @@ function rawlen(v) end
 function rawset(table, index, value) end
 
 ---#DES 'select'
----@param index integer|'"#"'
+---@param index integer|"#"
+---@param ...   any
 ---@return any
 ---@nodiscard
 function select(index, ...) end
 
 ---@version 5.1
 ---#DES 'setfenv'
----@param f     async fun()|integer
+---@param f     async fun(...):...|integer
 ---@param table table
 ---@return function
 function setfenv(f, table) end
 
+
+---@class metatable
+---@field __mode 'v'|'k'|'kv'|nil
+---@field __metatable any|nil
+---@field __tostring (fun(t):string)|nil
+---@field __gc fun(t)|nil
+---@field __add (fun(t1,t2):any)|nil
+---@field __sub (fun(t1,t2):any)|nil
+---@field __mul (fun(t1,t2):any)|nil
+---@field __div (fun(t1,t2):any)|nil
+---@field __mod (fun(t1,t2):any)|nil
+---@field __pow (fun(t1,t2):any)|nil
+---@field __unm (fun(t):any)|nil
+---#if VERSION >= 5.3 then
+---@field __idiv (fun(t1,t2):any)|nil
+---@field __band (fun(t1,t2):any)|nil
+---@field __bor (fun(t1,t2):any)|nil
+---@field __bxor (fun(t1,t2):any)|nil
+---@field __bnot (fun(t):any)|nil
+---@field __shl (fun(t1,t2):any)|nil
+---@field __shr (fun(t1,t2):any)|nil
+---#end
+---@field __concat (fun(t1,t2):any)|nil
+---@field __len (fun(t):integer)|nil
+---@field __eq (fun(t1,t2):boolean)|nil
+---@field __lt (fun(t1,t2):boolean)|nil
+---@field __le (fun(t1,t2):boolean)|nil
+---@field __index table|(fun(t,k):any)|nil
+---@field __newindex table|fun(t,k,v)|nil
+---@field __call (fun(t,...):...)|nil
+---#if VERSION > 5.1 or VERSION == JIT then
+---@field __pairs (fun(t):(fun(t,k,v):any,any))|nil
+---#end
+---#if VERSION == JIT or VERSION == 5.2 then
+---@field __ipairs (fun(t):(fun(t,k,v):(integer|nil),any))|nil
+---#end
+---#if VERSION >= 5.4 then
+---@field __close (fun(t,errobj):any)|nil
+---#end
+
 ---#DES 'setmetatable'
 ---@param table      table
----@param metatable? table
+---@param metatable? metatable|table
 ---@return table
 function setmetatable(table, metatable) end
 
@@ -228,14 +275,17 @@ function tonumber(e) end
 function tostring(v) end
 
 ---@alias type
----| '"nil"'
----| '"number"'
----| '"string"'
----| '"boolean"'
----| '"table"'
----| '"function"'
----| '"thread"'
----| '"userdata"'
+---| "nil"
+---| "number"
+---| "string"
+---| "boolean"
+---| "table"
+---| "function"
+---| "thread"
+---| "userdata"
+---#if VERSION == JIT then
+---| "cdata"
+---#end
 
 ---#DES 'type'
 ---@param v any
@@ -245,18 +295,19 @@ function type(v) end
 
 ---#DES '_VERSION'
 ---#if VERSION == 5.1 then
-_VERSION = 'Lua 5.1'
+_VERSION = "Lua 5.1"
 ---#elseif VERSION == 5.2 then
-_VERSION = 'Lua 5.2'
+_VERSION = "Lua 5.2"
 ---#elseif VERSION == 5.3 then
-_VERSION = 'Lua 5.3'
+_VERSION = "Lua 5.3"
 ---#elseif VERSION == 5.4 then
-_VERSION = 'Lua 5.4'
+_VERSION = "Lua 5.4"
 ---#end
 
 ---@version >5.4
 ---#DES 'warn'
 ---@param message string
+---@param ...     any
 function warn(message, ...) end
 
 ---#if VERSION == 5.1 and not JIT then
@@ -265,16 +316,17 @@ function warn(message, ...) end
 ---@param err   function
 ---@return boolean success
 ---@return any result
----@return ...
+---@return any ...
 function xpcall(f, err) end
 ---#else
 ---#DES 'xpcall>5.2'
----@param f     async fun()
+---@param f     async fun(...):...
 ---@param msgh  function
 ---@param arg1? any
+---@param ...   any
 ---@return boolean success
 ---@return any result
----@return ...
+---@return any ...
 function xpcall(f, msgh, arg1, ...) end
 ---#end
 

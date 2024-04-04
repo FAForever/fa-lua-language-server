@@ -6,7 +6,7 @@ local guide  = require 'parser.guide'
 local config = require 'config'
 
 local function replace(text, positions)
-    local state = files.getState('')
+    local state = files.getState(TESTURI)
     local buf = {}
     table.sort(positions, function (a, b)
         return a.start < b.start
@@ -26,19 +26,19 @@ end
 function TEST(oldName, newName)
     return function (oldScript)
         return function (expectScript)
-            files.setText('', oldScript)
-            local state = files.getState('')
+            files.setText(TESTURI, oldScript)
+            local state = files.getState(TESTURI)
             local offset = oldScript:find('[^%w_]'..oldName..'[^%w_]')
             assert(offset)
             local position = guide.offsetToPosition(state, offset)
 
-            local positions = core.rename('', position, newName)
+            local positions = core.rename(TESTURI, position, newName)
             local script = oldScript
             if positions then
                 script = replace(script, positions)
             end
             assert(script == expectScript)
-            files.remove('')
+            files.remove(TESTURI)
         end
     end
 end
@@ -211,4 +211,38 @@ end
 function f(arg2)
     print(arg2)
 end
+]]
+
+TEST ('field1', 'field2') [[
+---@class A
+---@field field1 number
+
+---@type A
+local t
+
+print(t.field1)
+]] [[
+---@class A
+---@field field2 number
+
+---@type A
+local t
+
+print(t.field2)
+]]
+
+TEST ('A', 'C') [[
+---@class A
+
+---@class B: A
+]] [[
+---@class C
+
+---@class B: C
+]]
+
+TEST ('A', 'C') [[
+---@class B: A
+]] [[
+---@class B: C
 ]]

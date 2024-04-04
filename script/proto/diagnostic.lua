@@ -62,6 +62,7 @@ m.register {
     'missing-return-value',
     'redundant-return-value',
     'missing-return',
+    'missing-fields',
 } {
     group    = 'unbalanced',
     severity = 'Warning',
@@ -76,6 +77,7 @@ m.register {
     'param-type-mismatch',
     'cast-type-mismatch',
     'return-type-mismatch',
+    'inject-field',
 } {
     group    = 'type-check',
     severity = 'Warning',
@@ -101,6 +103,16 @@ m.register {
 }
 
 m.register {
+    'incomplete-signature-doc',
+    'missing-global-doc',
+    'missing-local-export-doc',
+} {
+    group    = 'luadoc',
+    severity = 'Warning',
+    status   = 'None',
+}
+
+m.register {
     'codestyle-check'
 } {
     group    = 'codestyle',
@@ -113,6 +125,14 @@ m.register {
 } {
     group    = 'codestyle',
     severity = 'Information',
+    status   = 'None',
+}
+
+m.register {
+    'name-style-check'
+} {
+    group    = 'codestyle',
+    severity = 'Warning',
     status   = 'None',
 }
 
@@ -172,8 +192,15 @@ m.register {
 }
 
 m.register {
+    'global-element',
+} {
+    group   = 'conventions',
+    severity = 'Warning',
+    status = 'None'
+}
+
+m.register {
     'duplicate-index',
-    'duplicate-set-field',
 } {
     group    = 'duplicate',
     severity = 'Warning',
@@ -181,9 +208,18 @@ m.register {
 }
 
 m.register {
+    'duplicate-set-field',
+} {
+    group    = 'duplicate',
+    severity = 'Warning',
+    status   = 'Opened',
+}
+
+m.register {
     'close-non-object',
     'deprecated',
     'discard-returns',
+    'invisible',
 } {
     group    = 'strict',
     severity = 'Warning',
@@ -244,18 +280,20 @@ function m.getDiagAndErrNameMap()
         for name in pairs(m.getDefaultSeverity()) do
             names[name] = true
         end
-        local path = package.searchpath('parser.compile', package.path)
-        if path then
-            local f = io.open(path)
-            if f then
-                for line in f:lines() do
-                    local name = line:match([=[type%s*=%s*['"](%u[%u_]+%u)['"]]=])
-                    if name then
-                        local id = name:lower():gsub('_', '-')
-                        names[id] = true
+        for _, fileName in ipairs {'parser.compile', 'parser.luadoc'} do
+            local path = package.searchpath(fileName, package.path)
+            if path then
+                local f = io.open(path)
+                if f then
+                    for line in f:lines() do
+                        local name = line:match([=[type%s*=%s*['"](%u[%u_]+%u)['"]]=])
+                        if name then
+                            local id = name:lower():gsub('_', '-')
+                            names[id] = true
+                        end
                     end
+                    f:close()
                 end
-                f:close()
             end
         end
         table.sort(names)

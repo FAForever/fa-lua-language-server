@@ -7,7 +7,7 @@ local vm     = require 'vm'
 rawset(_G, 'TEST', true)
 
 local function getSource(pos)
-    local state = files.getState('')
+    local state = files.getState(TESTURI)
     if not state then
         return
     end
@@ -21,7 +21,8 @@ local function getSource(pos)
         or source.type == 'field'
         or source.type == 'method'
         or source.type == 'function'
-        or source.type == 'table' then
+        or source.type == 'table'
+        or source.type == 'doc.type.name' then
             result = source
         end
     end)
@@ -31,17 +32,21 @@ end
 function TEST(wanted)
     return function (script)
         local newScript, catched = catch(script, '?')
-        files.setText('', newScript)
+        files.setText(TESTURI, newScript)
         local source = getSource(catched['?'][1][1])
         assert(source)
-        local result = vm.getInfer(source):view('')
+        local result = vm.getInfer(source):view(TESTURI)
         if wanted ~= result then
-            vm.getInfer(source):view('')
+            vm.getInfer(source):view(TESTURI)
         end
         assert(wanted == result)
-        files.remove('')
+        files.remove(TESTURI)
     end
 end
+
+TEST 'nil' [[
+local <?t?> = nil
+]]
 
 TEST 'string' [[
 local <?var?> = '111'
@@ -177,7 +182,7 @@ TEST 'boolean' [[
 <?x?> = a == b
 ]]
 
-TEST 'integer' [[
+TEST 'unknown' [[
 <?x?> = a << b
 ]]
 
@@ -185,7 +190,7 @@ TEST 'integer' [[
 <?x?> = 1 << 2
 ]]
 
-TEST 'string' [[
+TEST 'unknown' [[
 <?x?> = a .. b
 ]]
 
@@ -201,7 +206,7 @@ TEST 'string' [[
 <?x?> = 'a' .. 1.0
 ]]
 
-TEST 'number' [[
+TEST 'unknown' [[
 <?x?> = a + b
 ]]
 
@@ -226,11 +231,11 @@ local a
 <?x?> = - a
 ]]
 
-TEST 'integer' [[
+TEST 'unknown' [[
 <?x?> = 1 + X
 ]]
 
-TEST 'number' [[
+TEST 'unknown' [[
 <?x?> = 1.0 + X
 ]]
 
@@ -1589,25 +1594,7 @@ AAA = {}
 local <?x?> = AAA()
 ]]
 
-TEST 'AA' [[
----@overload fun():AA
-AAA.BBB = {}
-
-
-local <?x?> = AAA.BBB()
-]]
-
-TEST 'AA' [[
-local AAA
-
----@overload fun():AA
-AAA.BBB = {}
-
-
-local <?x?> = AAA.BBB()
-]]
-
-TEST 'string|integer' [[
+TEST 'string' [[
 local <?x?>
 x = '1'
 x = 1
@@ -1654,7 +1641,7 @@ function A()
 end
 ]]
 
-TEST 'unknown' [[
+TEST 'string' [[
 local x
 
 function A()
@@ -1775,6 +1762,26 @@ x = '1'
 x = 1
 ]]
 
+TEST 'integer' [[
+local x
+x = true
+do
+    x = 1
+end
+print(<?x?>)
+]]
+
+TEST 'boolean' [[
+local x
+x = true
+function XX()
+    do
+        x = 1
+    end
+end
+print(<?x?>)
+]]
+
 TEST 'integer?' [[
 ---@type integer?
 local <?x?>
@@ -1826,6 +1833,17 @@ end
 print(<?x?>)
 ]]
 
+TEST 'nil' [[
+---@type integer?
+local x
+
+if not x then
+    print(<?x?>)
+end
+
+print(x)
+]]
+
 TEST 'integer' [[
 ---@type integer?
 local x
@@ -1853,6 +1871,15 @@ TEST 'integer' [[
 local x
 
 if xxx and x then
+    print(<?x?>)
+end
+]]
+
+TEST 'unknown' [[
+---@type integer?
+local x
+
+if not x and x then
     print(<?x?>)
 end
 ]]
@@ -2294,7 +2321,7 @@ local x
 print(<?x?>)
 ]]
 
-TEST 'unknown?' [[
+TEST 'nil' [[
 ---@type string?
 local x
 
@@ -2368,7 +2395,7 @@ end
 print(<?t?>)
 ]]
 
-TEST 'unknown?' [[
+TEST 'nil' [[
 ---@type integer?
 local t
 
@@ -2393,7 +2420,7 @@ local <?z?> = f()
 
 TEST 'integer|table' [[
 local function returnI()
-    return a + 1
+    return 1
 end
 
 local function f()
@@ -2529,21 +2556,21 @@ end
 print(<?x?>)
 ]]
 
-TEST 'table<unknown, true>' [[
+TEST 'table<xxx, true>' [[
 ---@alias xxx table<xxx, true>
 
 ---@type xxx
 local <?t?>
 ]]
 
-TEST 'unknown[][]' [[
+TEST 'xxx[][]' [[
 ---@alias xxx xxx[]
 
 ---@type xxx
 local <?t?>
 ]]
 
-TEST 'fun(x: fun(x: unknown))' [[
+TEST 'fun(x: fun(x: xxx))' [[
 ---@alias xxx fun(x: xxx)
 
 ---@type xxx
@@ -2592,6 +2619,17 @@ local n
 
 if not n then
     error('n is nil')
+end
+
+print(<?n?>)
+]]
+
+TEST 'integer' [[
+---@type integer?
+local n
+
+if not n then
+    os.exit()
 end
 
 print(<?n?>)
@@ -2870,10 +2908,7 @@ local <?x?> = echo(b)
 ]]
 
 TEST 'boolean' [[
----@return boolean
-function f()
-end
-
+---@overload fun():boolean
 ---@param x integer
 ---@return number
 function f(x)
@@ -2883,10 +2918,7 @@ local <?x?> = f()
 ]]
 
 TEST 'number' [[
----@return boolean
-function f()
-end
-
+---@overload fun():boolean
 ---@param x integer
 ---@return number
 function f(x)
@@ -2896,10 +2928,7 @@ local <?x?> = f(1)
 ]]
 
 TEST 'boolean' [[
----@return boolean
-function f()
-end
-
+---@overload fun():boolean
 ---@param x integer
 ---@return number
 function f(x)
@@ -2913,10 +2942,7 @@ local <?x?> = f(r0())
 ]]
 
 TEST 'number' [[
----@return boolean
-function f()
-end
-
+---@overload fun():boolean
 ---@param x integer
 ---@return number
 function f(x)
@@ -2930,10 +2956,7 @@ local <?x?> = f(r1())
 ]]
 
 TEST 'boolean' [[
----@return boolean
-function f()
-end
-
+---@overload fun():boolean
 ---@param x integer
 ---@return number
 function f(x)
@@ -2946,10 +2969,7 @@ local <?x?> = f(r0())
 ]]
 
 TEST 'number' [[
----@return boolean
-function f()
-end
-
+---@overload fun():boolean
 ---@param x integer
 ---@return number
 function f(x)
@@ -3177,10 +3197,30 @@ local function f() end
 local x, y, <?z?> = 1, 2, f()
 ]]
 
-TEST 'function' [[
+TEST 'unknown' [[
 local f
 
 print(<?f?>)
+
+function f() end
+]]
+
+TEST 'unknown' [[
+local f
+
+do
+    print(<?f?>)
+end
+
+function f() end
+]]
+
+TEST 'function' [[
+local f
+
+function A()
+    print(<?f?>)
+end
 
 function f() end
 ]]
@@ -3761,3 +3801,538 @@ TEST 'integerA' [[
 for <?i?> = 1, 10 do
 end
 ]]
+
+TEST 'string' [[
+---@class A
+---@field x string
+
+---@class B : A
+local t = {}
+
+t.x = t.x
+
+print(t.<?x?>)
+]]
+
+TEST 'unknown' [[
+local t = {
+    x = 1,
+}
+
+local x
+
+local <?v?> = t[x]
+]]
+
+TEST 'A|B' [[
+---@class A
+---@class B: A
+
+---@type A|B
+local <?t?>
+]]
+
+TEST 'function' [[
+---@class myClass
+local myClass = { has = { nested = {} } }
+
+function myClass.has.nested.fn() end
+
+---@type myClass
+local class
+
+class.has.nested.<?fn?>()
+]]
+
+TEST 'integer[]' [[
+---@generic T
+---@param f fun(x: T)
+---@return T[]
+local function x(f) end
+
+---@param x integer
+local <?arr?> = x(function (x) end)
+]]
+
+TEST 'integer[]' [[
+---@generic T
+---@param f fun():T
+---@return T[]
+local function x(f) end
+
+local <?arr?> = x(function ()
+    return 1
+end)
+]]
+
+TEST 'integer[]' [[
+---@generic T
+---@param f fun():T
+---@return T[]
+local function x(f) end
+
+---@return integer
+local <?arr?> = x(function () end)
+]]
+
+TEST 'integer[]' [[
+---@generic T
+---@param f fun(x: T)
+---@return T[]
+local function x(f) end
+
+---@type fun(x: integer)
+local cb
+
+local <?arr?> = x(cb)
+]]
+
+TEST 'integer[]' [[
+---@generic T
+---@param f fun():T
+---@return T[]
+local function x(f) end
+
+---@type fun(): integer
+local cb
+
+local <?arr?> = x(cb)
+]]
+
+TEST 'integer' [[
+---@return fun(x: integer)
+local function f()
+    return function (<?x?>)
+    end
+end
+]]
+
+TEST 'string' [[
+---@class A
+---@field f fun(x: string)
+
+---@type A
+local t = {
+    f = function (<?x?>) end
+}
+]]
+
+config.set(nil, 'Lua.runtime.special', {
+    ['xx.assert'] = 'assert'
+})
+
+TEST 'number' [[
+---@type number?
+local t
+
+xx.assert(t)
+
+print(<?t?>)
+]]
+
+config.set(nil, 'Lua.runtime.special', nil)
+
+TEST 'A' [[
+---@class A
+local mt
+
+---@return <?self?>
+function mt:init()
+end
+]]
+
+TEST 'A' [[
+---@class A
+local mt
+
+---@return self
+function mt:init()
+end
+
+local <?o?> = mt:init()
+]]
+
+TEST 'A' [[
+---@class A
+---@field x <?self?>
+]]
+
+TEST 'A' [[
+---@class A
+---@field x self
+
+---@type A
+local o
+
+print(o.<?x?>)
+]]
+
+TEST 'A' [[
+---@class A
+---@overload fun(): self
+local A
+
+local <?o?> = A()
+]]
+
+TEST 'number' [[
+---@type table<'Test1', fun(x: number)>
+local t = {
+    ["Test1"] = function(<?x?>) end,
+}
+]]
+
+TEST 'number' [[
+---@type table<5, fun(x: number)>
+local t = {
+    [5] = function(<?x?>) end,
+}
+]]
+
+TEST 'number' [[
+---@type fun(x: number)
+local function f(<?x?>) end
+]]
+
+TEST 'boolean' [[
+---@generic T: string | boolean | table
+---@param x T
+---@return T
+local function f(x)
+    return x
+end
+
+local <?x?> = f(true)
+]]
+
+TEST 'number' [[
+---@class A
+---@field [1] number
+---@field [2] boolean
+local t
+
+local <?n?> = t[1]
+]]
+
+TEST 'boolean' [[
+---@class A
+---@field [1] number
+---@field [2] boolean
+local t
+
+local <?n?> = t[2]
+]]
+
+TEST 'N' [[
+---@class N: number
+local x
+
+if x == 0.1 then
+    print(<?x?>)
+end
+]]
+
+TEST 'vec3' [[
+---@class mat4
+---@operator mul(vec3): vec3 -- matrix * vector
+---@operator mul(number): mat4 -- matrix * constant
+
+---@class vec3: number
+
+---@type mat4, vec3
+local m, v
+
+local <?r?> = m * v
+]]
+
+TEST 'mat4' [[
+---@class mat4
+---@operator mul(number): mat4 -- matrix * constant
+---@operator mul(vec3): vec3 -- matrix * vector
+
+---@class vec3: number
+
+---@type mat4, vec3
+local m, v
+
+local <?r?> = m * v
+]]
+
+TEST 'A|B' [[
+---@class A
+---@class B
+
+---@type A|B
+local t
+
+if x then
+    ---@cast t A
+else
+    print(<?t?>)
+end
+]]
+
+TEST 'A|B' [[
+---@class A
+---@class B
+
+---@type A|B
+local t
+
+if x then
+    ---@cast t A
+elseif <?t?> then
+end
+]]
+
+TEST 'A|B' [[
+---@class A
+---@class B
+
+---@type A|B
+local t
+
+if x then
+    ---@cast t A
+    print(t)
+elseif <?t?> then
+end
+]]
+
+TEST 'A|B' [[
+---@class A
+---@class B
+
+---@type A|B
+local t
+
+if x then
+    ---@cast t A
+    print(t)
+elseif <?t?> then
+    ---@cast t A
+    print(t)
+end
+]]
+
+TEST 'function' [[
+local function x()
+    print(<?x?>)
+end
+]]
+
+TEST 'number' [[
+---@type number?
+local x
+
+do
+    if not x then
+        return
+    end
+end
+
+print(<?x?>)
+]]
+
+TEST 'number' [[
+---@type number[]
+local xs
+
+---@type fun(x): number?
+local f
+
+for _, <?x?> in ipairs(xs) do
+    x = f(x)
+end
+]]
+
+TEST 'number' [[
+---@type number?
+X = Y
+
+if X then
+    print(<?X?>)
+end
+]]
+
+TEST 'number' [[
+---@type number|boolean
+X = Y
+
+if type(X) == 'number' then
+    print(<?X?>)
+end
+]]
+
+TEST 'boolean' [[
+---@type number|boolean
+X = Y
+
+if type(X) ~= 'number' then
+    print(<?X?>)
+end
+]]
+
+TEST 'boolean' [[
+---@type number
+X = Y
+
+---@cast X boolean
+
+print(<?X?>)
+]]
+
+TEST 'number' [[
+---@type number
+local t
+
+if xxx == <?t?> then
+    print(t)
+end
+]]
+
+TEST 'V' [[
+---@class V
+X = 1
+
+print(<?X?>)
+]]
+
+TEST 'V' [[
+---@class V
+X.Y = 1
+
+print(X.<?Y?>)
+]]
+
+TEST 'integer' [[
+local x = {}
+
+x.y = 1
+local y = x.y
+x.y = nil
+
+print(<?y?>)
+]]
+
+TEST 'function' [[
+function X()
+    <?Y?>()
+end
+
+function Y()
+end
+]]
+
+TEST 'A_Class' [[
+---@class A_Class
+local A = { x = 5 }
+
+function A:func()
+    for i = 1, <?self?>.x do
+        print(i)
+    end
+
+    self.y = 3
+    self.y = self.y + 3
+end
+]]
+
+TEST 'number' [[
+---@type number?
+local n
+local <?v?> = n or error('')
+]]
+
+TEST 'Foo' [[
+---@class Foo
+---@operator mul(Foo): Foo
+---@operator mul(Bar): Foo
+---@class Bar
+
+---@type Foo
+local foo
+
+---@type Foo|Bar
+local fooOrBar
+
+local <?b?> = foo * fooOrBar
+]]
+
+TEST 'number' [[
+local a = 4;
+local b = 2;
+
+local <?c?> = a / b;
+]]
+
+TEST 'string' [[
+local a = '4';
+local b = '2';
+
+local <?c?> = a .. b;
+]]
+
+TEST 'number|{ [1]: string }' [[
+---@alias Some
+---| { [1]: string }
+---| number
+
+local x ---@type Some
+
+print(<?x?>)
+]]
+
+TEST 'integer' [[
+---@class metatable : table
+---@field __index table
+
+---@param table      table
+---@param metatable? metatable
+---@return table
+function setmetatable(table, metatable) end
+
+local m = setmetatable({},{ __index = { a = 1 } })
+
+m.<?a?>
+]]
+
+TEST 'integer' [[
+---@class metatable : table
+---@field __index table
+
+---@param table      table
+---@param metatable? metatable
+---@return table
+function setmetatable(table, metatable) end
+
+local mt = {a = 1 }
+local m = setmetatable({},{ __index = mt })
+
+m.<?a?>
+]]
+
+TEST 'integer' [[
+local x = 1
+repeat
+until <?x?>
+]]
+
+-- #2144
+TEST 'A' [=[
+local function f()
+    return {} --[[@as A]]
+end
+
+local <?x?> = f()
+]=]
+
+TEST 'A' [=[
+local function f()
+    ---@type A
+    return {}
+end
+
+local <?x?> = f()
+]=]
+--

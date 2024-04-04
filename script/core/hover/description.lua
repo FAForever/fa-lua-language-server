@@ -7,6 +7,7 @@ local util     = require 'utility'
 local guide    = require 'parser.guide'
 local rpath    = require 'workspace.require-path'
 local furi     = require 'file-uri'
+local wssymbol = require 'core.workspace-symbol'
 
 local function collectRequire(mode, literal, uri)
     local result, searchers
@@ -125,6 +126,52 @@ local function getBindComment(source)
     return table.concat(lines, '\n')
 end
 
+---@async
+local function packSee(see)
+    local name = see.name[1]
+    local buf  = {}
+    local target
+    for _, symbol in ipairs(wssymbol(name, guide.getUri(see))) do
+        if symbol.name == name then
+            target = symbol.source
+            break
+        end
+    end
+    if target then
+        local row, col = guide.rowColOf(target.start)
+        buf[#buf+1] = ('[%s](%s#%d#%d)'):format(name, guide.getUri(target), row + 1, col)
+    else
+        buf[#buf+1] = ('~%s~'):format(name)
+    end
+    if see.comment then
+        buf[#buf+1] = ' '
+        buf[#buf+1] = see.comment.text
+    end
+    return table.concat(buf)
+end
+
+---@async
+local function lookUpDocSees(lines, docGroup)
+    local sees = {}
+    for _, doc in ipairs(docGroup) do
+        if doc.type == 'doc.see' then
+            sees[#sees+1] = doc
+        end
+    end
+    if #sees == 0 then
+        return
+    end
+    if #sees == 1 then
+        lines[#lines+1] = ('See: %s'):format(packSee(sees[1]))
+        return
+    end
+    lines[#lines+1] = 'See:'
+    for _, see in ipairs(sees) do
+        lines[#lines+1] = ('  * %s'):format(packSee(see))
+    end
+end
+
+---@async
 local function lookUpDocComments(source)
     local docGroup = source.bindDocs
     if not docGroup then
@@ -142,7 +189,10 @@ local function lookUpDocComments(source)
     for _, doc in ipairs(docGroup) do
         if doc.type == 'doc.comment' then
             lines[#lines+1] = normalizeComment(doc.comment.text, uri)
-        elseif doc.type == 'doc.type' then
+        elseif doc.type == 'doc.type'
+        or     doc.type == 'doc.public'
+        or     doc.type == 'doc.protected'
+        or     doc.type == 'doc.private' then
             if doc.comment then
                 lines[#lines+1] = normalizeComment(doc.comment.text, uri)
             end
@@ -155,6 +205,7 @@ local function lookUpDocComments(source)
     if source.comment then
         lines[#lines+1] = normalizeComment(source.comment.text, uri)
     end
+    lookUpDocSees(lines, docGroup)
     if not lines or #lines == 0 then
         return nil
     end
@@ -212,7 +263,7 @@ local function buildEnumChunk(docType, name, uri)
                 (enum.default    and '->')
             or  (enum.additional and '+>')
             or  ' |',
-            vm.viewObject(enum, uri)
+            vm.getInfer(enum):view(uri)
         )
         if enum.comment then
             local first = true
@@ -285,7 +336,7 @@ local function tryDocFieldComment(source)
     end
 end
 
-local function getFunctionComment(source)
+local function getFunctionComment(source, raw)
     local docGroup = source.bindDocs
     if not docGroup then
         return
@@ -305,14 +356,14 @@ local function getFunctionComment(source)
         if     doc.type == 'doc.comment' then
             local comment = normalizeComment(doc.comment.text, uri)
             md:add('md', comment)
-        elseif doc.type == 'doc.param' then
+        elseif doc.type == 'doc.param' and not raw then
             if doc.comment then
                 md:add('md', ('@*param* `%s` — %s'):format(
                     doc.param[1],
                     doc.comment.text
                 ))
             end
-        elseif doc.type == 'doc.return' then
+        elseif doc.type == 'doc.return' and not raw then
             if hasReturnComment then
                 local name = {}
                 for _, rtn in ipairs(doc.returns) do
@@ -349,10 +400,14 @@ local function getFunctionComment(source)
     return comment
 end
 
-local function tryDocComment(source)
+---@async
+local function tryDocComment(source, raw)
     local md = markdown()
+    if source.value and source.value.type == 'function' then
+        source = source.value
+    end
     if source.type == 'function' then
-        local comment = getFunctionComment(source)
+        local comment = getFunctionComment(source, raw)
         md:add('md', comment)
         source = source.parent
     end
@@ -373,7 +428,8 @@ local function tryDocComment(source)
     return result
 end
 
-local function tryDocOverloadToComment(source)
+---@async
+local function tryDocOverloadToComment(source, raw)
     if source.type ~= 'doc.type.function' then
         return
     end
@@ -382,7 +438,7 @@ local function tryDocOverloadToComment(source)
     or not doc.bindSource then
         return
     end
-    local md = tryDocComment(doc.bindSource)
+    local md = tryDocComment(doc.bindSource, raw)
     if md then
         return md
     end
@@ -393,7 +449,8 @@ local function tyrDocParamComment(source)
     or source.type == 'getlocal' then
         source = source.node
     end
-    if source.type ~= 'local' then
+    if source.type ~= 'local'
+    and source.type ~= '...' then
         return
     end
     if source.parent.type ~= 'funcargs' then
@@ -421,47 +478,72 @@ local function tryDocEnum(source)
     if not tbl then
         return
     end
-    local md = markdown()
-    md:add('lua', '{')
-    for _, field in ipairs(tbl) do
-        if field.type == 'tablefield'
-        or field.type == 'tableindex' then
-            if not field.value then
-                goto CONTINUE
-            end
-            local key = guide.getKeyName(field)
-            if not key then
-                goto CONTINUE
-            end
-            if field.value.type == 'integer'
-            or field.value.type == 'string' then
-                md:add('lua', ('    %s: %s = %s,'):format(key, field.value.type, field.value[1]))
-            end
-            if field.value.type == 'binary'
-            or field.value.type == 'unary' then
-                local number = vm.getNumber(field.value)
-                if number then
-                    md:add('lua', ('    %s: %s = %s,'):format(key, math.tointeger(number) and 'integer' or 'number', number))
+    if vm.docHasAttr(source, 'key') then
+        local md = markdown()
+        local keys = {}
+        for _, field in ipairs(tbl) do
+            if field.type == 'tablefield'
+            or field.type == 'tableindex' then
+                if not field.value then
+                    goto CONTINUE
                 end
+                local key = guide.getKeyName(field)
+                if not key then
+                    goto CONTINUE
+                end
+                keys[#keys+1] = ('%q'):format(key)
+                ::CONTINUE::
             end
-            ::CONTINUE::
         end
+        md:add('lua', table.concat(keys, ' | '))
+        return md:string()
+    else
+        local md = markdown()
+        md:add('lua', '{')
+        for _, field in ipairs(tbl) do
+            if field.type == 'tablefield'
+            or field.type == 'tableindex' then
+                if not field.value then
+                    goto CONTINUE
+                end
+                local key = guide.getKeyName(field)
+                if not key then
+                    goto CONTINUE
+                end
+                if field.value.type == 'integer'
+                or field.value.type == 'string' then
+                    md:add('lua', ('    %s: %s = %s,'):format(key, field.value.type, field.value[1]))
+                end
+                if field.value.type == 'binary'
+                or field.value.type == 'unary' then
+                    local number = vm.getNumber(field.value)
+                    if number then
+                        md:add('lua', ('    %s: %s = %s,'):format(key, math.tointeger(number) and 'integer' or 'number', number))
+                    end
+                end
+                ::CONTINUE::
+            end
+        end
+        md:add('lua', '}')
+        return md:string()
     end
-    md:add('lua', '}')
-    return md:string()
 end
 
-return function (source)
+---@async
+return function (source, raw)
     if source.type == 'string' then
         return asString(source)
+    end
+    if source.type == 'doc.tailcomment' then
+        return source.text
     end
     if source.type == 'field' then
         source = source.parent
     end
-    return tryDocOverloadToComment(source)
+    return tryDocOverloadToComment(source, raw)
         or tryDocFieldComment(source)
         or tyrDocParamComment(source)
-        or tryDocComment(source)
+        or tryDocComment(source, raw)
         or tryDocClassComment(source)
         or tryDocModule(source)
         or tryDocEnum(source)

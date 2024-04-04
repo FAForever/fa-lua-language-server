@@ -1,3 +1,4 @@
+#howdy
 local lm = require 'luamake'
 
 lm.c = lm.compiler == 'msvc' and 'c89' or 'c11'

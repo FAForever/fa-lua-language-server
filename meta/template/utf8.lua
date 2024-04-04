@@ -1,5 +1,5 @@
 ---#if VERSION <= 5.2 then DISABLE() end
----@meta
+---@meta utf8
 
 ---@version >5.3
 ---#DES 'utf8'
@@ -70,7 +70,7 @@ function utf8.len(s, i, j, lax) end
 ---#DES 'utf8.offset'
 ---@param s string
 ---@param n integer
----@param i integer
+---@param i? integer
 ---@return integer p
 ---@nodiscard
 function utf8.offset(s, n, i) end

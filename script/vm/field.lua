@@ -16,7 +16,7 @@ local searchByNodeSwitch = util.switch()
     end)
 
 local function searchByLocalID(source, pushResult)
-    local fields = vm.getLocalFields(source, true)
+    local fields = vm.getVariableFields(source, true)
     if fields then
         for _, field in ipairs(fields) do
             pushResult(field)
@@ -24,10 +24,18 @@ local function searchByLocalID(source, pushResult)
     end
 end
 
-local function searchByNode(source, pushResult)
+local function searchByNode(source, pushResult, mark)
+    mark = mark or {}
+    if mark[source] then
+        return
+    end
+    mark[source] = true
     local uri = guide.getUri(source)
-    vm.compileByParentNode(source, nil, true, function (field)
+    vm.compileByParentNode(source, vm.ANY, function (field)
         searchByNodeSwitch(field.type, uri, field, pushResult)
+    end)
+    vm.compileByNodeChain(source, function (src)
+        searchByNode(src, pushResult, mark)
     end)
 end
 

@@ -3,21 +3,38 @@ local lang  = require 'language'
 local guide = require 'parser.guide'
 local vm    = require 'vm'
 local await = require 'await'
+local util  = require 'utility'
 
 ---@param func parser.object
 ---@return vm.node[]?
 local function getDocReturns(func)
-    if not func.bindDocs then
-        return nil
-    end
-    local returns = {}
-    for _, doc in ipairs(func.bindDocs) do
-        if doc.type == 'doc.return' then
-            for _, ret in ipairs(doc.returns) do
-                returns[ret.returnIndex] = vm.compileNode(ret)
+    ---@type table<integer, vm.node>
+    local returns = util.defaultTable(function ()
+        return vm.createNode()
+    end)
+    if func.bindDocs then
+        for _, doc in ipairs(func.bindDocs) do
+            if doc.type == 'doc.return' then
+                for _, ret in ipairs(doc.returns) do
+                    returns[ret.returnIndex]:merge(vm.compileNode(ret))
+                end
+            end
+            if doc.type == 'doc.overload' then
+                for i, ret in ipairs(doc.overload.returns) do
+                    returns[i]:merge(vm.compileNode(ret))
+                end
             end
         end
     end
+    for nd in vm.compileNode(func):eachObject() do
+        if nd.type == 'doc.type.function' then
+            ---@cast nd parser.object
+            for i, ret in ipairs(nd.returns) do
+                returns[i]:merge(vm.compileNode(ret))
+            end
+        end
+    end
+    setmetatable(returns, nil)
     if #returns == 0 then
         return nil
     end
@@ -44,7 +61,8 @@ return function (uri, callback)
                     retNode = retNode:copy():removeOptional()
                 end
             end
-            if not vm.canCastType(uri, docRet, retNode) then
+            local errs = {}
+            if not vm.canCastType(uri, docRet, retNode, errs) then
                 callback {
                     start   = exp.start,
                     finish  = exp.finish,
@@ -52,7 +70,7 @@ return function (uri, callback)
                         def   = vm.getInfer(docRet):view(uri),
                         ref   = vm.getInfer(retNode):view(uri),
                         index = i,
-                    }),
+                    }) .. '\n' .. vm.viewTypeErrorMessage(uri, errs),
                 }
             end
         end

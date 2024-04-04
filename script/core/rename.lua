@@ -3,42 +3,59 @@ local vm         = require 'vm'
 local util       = require 'utility'
 local findSource = require 'core.find-source'
 local guide      = require 'parser.guide'
+local config     = require 'config'
 
 local Forcing
 
+---@param str string
+---@return string
 local function trim(str)
     return str:match '^%s*(%S+)%s*$'
 end
 
-local function isValidName(str)
+---@param uri uri
+---@param str string
+---@return boolean
+local function isValidName(uri, str)
     if not str then
         return false
     end
-    return str:match '^[%a_][%w_]*$'
+    local allowUnicode = config.get(uri, 'Lua.runtime.unicodeName')
+    if allowUnicode then
+        return str:match '^[%a_\x80-\xff][%w_\x80-\xff]*$'
+    else
+        return str:match '^[%a_][%w_]*$'
+    end
 end
 
-local function isValidGlobal(str)
+---@param uri uri
+---@param str string
+---@return boolean
+local function isValidGlobal(uri, str)
     if not str then
         return false
     end
     for s in str:gmatch '[^%.]*' do
-        if not isValidName(trim(s)) then
+        if not isValidName(uri, trim(s)) then
             return false
         end
     end
     return true
 end
 
-local function isValidFunctionName(str)
-    if isValidGlobal(str) then
+---@param uri uri
+---@param str string
+---@return boolean
+local function isValidFunctionName(uri, str)
+    if isValidGlobal(uri, str) then
         return true
     end
     local offset = str:find(':', 1, true)
     if not offset then
         return false
     end
-    return  isValidGlobal(trim(str:sub(1, offset-1)))
-        and isValidName(trim(str:sub(offset+1)))
+    return  isValidGlobal(uri, trim(str:sub(1, offset-1)))
+        and isValidName(uri, trim(str:sub(offset+1)))
 end
 
 local function isFunctionGlobalName(source)
@@ -54,7 +71,7 @@ local function isFunctionGlobalName(source)
 end
 
 local function renameLocal(source, newname, callback)
-    if isValidName(newname) then
+    if isValidName(guide.getUri(source), newname) then
         callback(source, source.start, source.finish, newname)
         return
     end
@@ -62,7 +79,7 @@ local function renameLocal(source, newname, callback)
 end
 
 local function renameField(source, newname, callback)
-    if isValidName(newname) then
+    if isValidName(guide.getUri(source), newname) then
         callback(source, source.start, source.finish, newname)
         return true
     end
@@ -108,11 +125,11 @@ local function renameField(source, newname, callback)
 end
 
 local function renameGlobal(source, newname, callback)
-    if isValidGlobal(newname) then
+    if isValidGlobal(guide.getUri(source), newname) then
         callback(source, source.start, source.finish, newname)
         return true
     end
-    if isValidFunctionName(newname) then
+    if isValidFunctionName(guide.getUri(source), newname) then
         callback(source, source.start, source.finish, newname)
         return true
     end
@@ -178,6 +195,11 @@ local function ofFieldThen(key, src, newname, callback)
         if not suc then
             return
         end
+    elseif src.type == 'doc.field' then
+        local suc = renameField(src.field, newname, callback)
+        if not suc then
+            return
+        end
     end
 end
 
@@ -200,12 +222,9 @@ local function ofGlobal(source, newname, callback)
     if not global then
         return
     end
-    local uri = guide.getUri(source)
-    for _, set in ipairs(global:getSets(uri)) do
-        ofFieldThen(key, set, newname, callback)
-    end
-    for _, get in ipairs(global:getGets(uri)) do
-        ofFieldThen(key, get, newname, callback)
+    local refs = vm.getRefs(source)
+    for _, ref in ipairs(refs) do
+        ofFieldThen(key, ref, newname, callback)
     end
 end
 
@@ -235,8 +254,10 @@ local function ofDocTypeName(source, newname, callback)
             callback(doc, doc.enum.start, doc.enum.finish, newname)
         end
     end
-    for _, doc in ipairs(global:getGets(uri)) do
-        if doc.type == 'doc.type.name' then
+    local refs = vm.getRefs(source)
+    for _, doc in ipairs(refs) do
+        if doc.type == 'doc.type.name'
+        or doc.type == 'doc.extends.name' then
             callback(doc, doc.start, doc.finish, newname)
         end
     end
@@ -280,10 +301,13 @@ local function rename(source, newname, callback)
     elseif source.type == 'doc.class.name'
     or     source.type == 'doc.type.name'
     or     source.type == 'doc.alias.name'
-    or     source.type == 'doc.enum.name' then
+    or     source.type == 'doc.enum.name'
+    or     source.type == 'doc.extends.name' then
         return ofDocTypeName(source, newname, callback)
     elseif source.type == 'doc.param.name' then
         return ofDocParamName(source, newname, callback)
+    elseif source.type == 'doc.field.name' then
+        return ofField(source, newname, callback)
     elseif source.type == 'string'
     or     source.type == 'number'
     or     source.type == 'integer'
@@ -315,7 +339,9 @@ local function prepareRename(source)
     or source.type == 'doc.type.name'
     or source.type == 'doc.alias.name'
     or source.type == 'doc.enum.name'
-    or source.type == 'doc.param.name' then
+    or source.type == 'doc.param.name'
+    or source.type == 'doc.field.name'
+    or source.type == 'doc.extends.name' then
         return source, source[1]
     elseif source.type == 'string'
     or     source.type == 'number'
@@ -351,11 +377,13 @@ local accept = {
     ['number']     = true,
     ['integer']    = true,
 
-    ['doc.class.name'] = true,
-    ['doc.type.name']  = true,
-    ['doc.alias.name'] = true,
-    ['doc.param.name'] = true,
-    ['doc.enum.name']  = true,
+    ['doc.class.name']   = true,
+    ['doc.type.name']    = true,
+    ['doc.alias.name']   = true,
+    ['doc.param.name']   = true,
+    ['doc.enum.name']    = true,
+    ['doc.field.name']   = true,
+    ['doc.extends.name'] = true,
 }
 
 local m = {}
@@ -386,7 +414,11 @@ function m.rename(uri, pos, newname)
             return
         end
         mark[uid] = true
-        if files.isLibrary(turi, true) then
+        if vm.isMetaFile(turi) then
+            return
+        end
+        if files.isLibrary(turi, true)
+        and not files.isLibrary(uri, true) then
             return
         end
         results[#results+1] = {

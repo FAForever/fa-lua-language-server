@@ -37,6 +37,12 @@ function mt:removeAllLinks()
     self._links = {}
 end
 
+---@return fun(): uri
+---@return table<uri, true>
+function mt:eachLink()
+    return next, self._links
+end
+
 ---@param uri uri
 ---@return boolean
 function mt:isChildUri(uri)
@@ -46,7 +52,17 @@ function mt:isChildUri(uri)
     if not self.uri then
         return false
     end
-    return uri:sub(1, #self.uri) == self.uri
+    if self.uri == uri then
+        return true
+    end
+    if uri:sub(1, #self.uri) ~= self.uri then
+        return false
+    end
+    if uri:sub(#self.uri, #self.uri) == '/'
+    or uri:sub(#self.uri + 1, #self.uri + 1) == '/' then
+        return true
+    end
+    return false
 end
 
 ---@param uri uri
@@ -56,9 +72,17 @@ function mt:isLinkedUri(uri)
         return false
     end
     for linkUri in pairs(self._links) do
-        if uri:sub(1, #linkUri) == linkUri then
+        if uri == linkUri then
             return true
         end
+        if uri:sub(1, #linkUri) ~= linkUri then
+            goto CONTINUE
+        end
+        if uri:sub(#linkUri, #linkUri) == '/'
+        or uri:sub(#linkUri + 1, #linkUri + 1) == '/' then
+            return true
+        end
+        ::CONTINUE::
     end
     return false
 end
@@ -101,8 +125,6 @@ function mt:set(k, v)
     return v
 end
 
----@param k string
----@return any
 function mt:get(k)
     return self._data[k]
 end
@@ -213,11 +235,11 @@ function m.getLinkedScope(uri)
     return nil
 end
 
----@param uri uri
+---@param uri? uri
 ---@return scope
 function m.getScope(uri)
-    return m.getFolder(uri)
-        or m.getLinkedScope(uri)
+    return uri and (m.getFolder(uri)
+        or m.getLinkedScope(uri))
         or m.fallback
 end
 

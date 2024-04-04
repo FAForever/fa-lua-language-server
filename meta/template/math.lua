@@ -1,4 +1,4 @@
----@meta
+---@meta math
 
 ---#DES 'math'
 ---@class mathlib
@@ -15,8 +15,9 @@
 math = {}
 
 ---#DES 'math.abs'
----@param x number
----@return number
+---@generic Number: number
+---@param x Number
+---@return Number
 ---@nodiscard
 function math.abs(x) end
 

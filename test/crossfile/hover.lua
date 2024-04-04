@@ -44,6 +44,7 @@ function TEST(expect)
         local script, list = catch(file.content, '?')
         local uri          = furi.encode(file.path)
         files.setText(uri, script)
+        files.compileState(uri)
         if #list['?'] > 0 then
             sourceUri = uri
             sourcePos = (list['?'][1][1] + list['?'][1][2]) // 2
@@ -171,6 +172,55 @@ TEST {
 * [Folder/a.lua](file:///Folder/a.lua) （搜索路径： `Folder/?.lua`）]],
 }
 end
+
+TEST {
+    {
+        path = 'a.lua',
+        content = '---@meta _',
+    },
+    {
+        path = 'b.lua',
+        content = 'require <?"a"?>',
+    },
+    hover = [[
+```lua
+1 个字节
+```]],
+}
+
+TEST {
+    {
+        path = 'a.lua',
+        content = '---@meta xxx',
+    },
+    {
+        path = 'b.lua',
+        content = 'require <?"a"?>',
+    },
+    hover = [[
+```lua
+1 个字节
+```]],
+}
+
+TEST {
+    {
+        path = 'a.lua',
+        content = '---@meta xxx',
+    },
+    {
+        path = 'b.lua',
+        content = 'require <?"xxx"?>',
+    },
+    hover = [=[
+```lua
+3 个字节
+```
+
+---
+
+* [[meta]](file:///a.lua)]=],
+}
 
 TEST {
     {
@@ -525,7 +575,7 @@ function f(x: string, y: table)
 
 @*param* `x` — this is comment
 
-@*param* `y` —  comment 1
+@*param* `y` — comment 1
 
 @*return* `name` — comment 2
 
@@ -696,7 +746,7 @@ function f(a: boolean)
 
 ---
 
-@*param* `a` —  xxx
+@*param* `a` — xxx
 
 ```lua
 a:
@@ -1258,7 +1308,7 @@ local n: integer
 
 ---
 
- comments]]
+comments]]
 }
 
 TEST {
@@ -1315,7 +1365,7 @@ local n: integer
 
 ---
 
- comments]]
+comments]]
 }
 
 TEST {
@@ -1334,7 +1384,7 @@ local n: integer
 
 ---
 
- comments]]
+comments]]
 }
 
 TEST {
@@ -1411,7 +1461,7 @@ TEST {
 
 ---
 
- comments]]
+comments]]
 }
 
 TEST {
@@ -1579,6 +1629,226 @@ TEST {
     x: integer = 1,
     y: integer = 2,
     z: integer = 4,
+}
+```]]
+}
+
+TEST {
+    {
+        path = 'a.lua',
+        content = [[
+            ---@enum(key) <?A?>
+            local t = {
+                x = 1 << 0,
+                y = 1 << 1,
+                z = 1 << 2,
+            }
+        ]]
+    },
+    hover = [[
+```lua
+(enum) A
+```
+
+---
+
+```lua
+"x" | "y" | "z"
+```]]
+}
+
+TEST {
+    {
+        path = 'a.lua',
+        content = [[
+            ---@alias someType
+            ---| "#" # description
+            
+            ---@type someType
+            local <?someValue?>
+        ]]
+    },
+    hover = [[
+```lua
+local someValue: "#"
+```
+
+---
+
+```lua
+someType:
+    | "#" -- description
+```]]
+}
+
+TEST { { path = 'a.lua', content = [[
+---@overload fun(x: number)
+---@overload fun(x: number, y: number)
+local function <?f?>(...)
+end
+]] },
+hover = [[
+```lua
+function f(x: number)
+```
+
+---
+
+```lua
+function f(x: number, y: number)
+```]]
+}
+
+TEST { { path = 'a.lua', content = [[
+---@overload fun(x: number)
+---@overload fun(x: number, y: number)
+local function f(...)
+end
+
+<?f?>
+]] },
+hover = [[
+```lua
+function f(x: number)
+```
+
+---
+
+```lua
+function f(x: number, y: number)
+```]]
+}
+
+TEST { { path = 'a.lua', content = [[
+---@overload fun(self: self, x: number)
+---@overload fun(self: self, x: number, y: number)
+function M:f(...)
+end
+
+M:<?f?>
+]] },
+hover = [[
+```lua
+(method) M:f(x: number)
+```
+
+---
+
+```lua
+(method) M:f(x: number, y: number)
+```]]
+}
+
+TEST { {path = 'a.lua', content = [[
+---@class A
+
+---@see A # comment1
+local <?x?>
+]]},
+hover = [[
+```lua
+local x: unknown
+```
+
+---
+
+See: [A](file:///a.lua#1#10) comment1]]
+}
+
+TEST { {path = 'a.lua', content = [[
+---@class A
+
+TTT = 1
+
+---@see A # comment1
+---@see TTT # comment2
+local <?x?>
+]]},
+hover = [[
+```lua
+local x: unknown
+```
+
+---
+
+See:
+  * [A](file:///a.lua#1#10) comment1
+  * [TTT](file:///a.lua#3#0) comment2]]
+}
+
+TEST { {path = 'a.lua', content = [[
+---comment1
+---comment2
+---@overload fun()
+---@param x number
+local function <?f?>(x) end
+]]},
+hover = [[
+```lua
+function f(x: number)
+```
+
+---
+
+comment1
+comment2
+
+---
+
+```lua
+function f()
+```]]
+}
+
+TEST { {path = 'a.lua', content = [[
+---"hello world" this is ok
+---@param bar any "lorem ipsum" this is ignored
+---@param baz any # "dolor sit" this is ignored
+local function <?foo?>(bar, baz)
+end
+]]},
+hover = [[
+```lua
+function foo(bar: any, baz: any)
+```
+
+---
+
+"hello world" this is ok
+
+@*param* `bar` — "lorem ipsum" this is ignored
+
+@*param* `baz` — "dolor sit" this is ignored]]
+}
+
+TEST { {path = 'a.lua', content = [[
+--comment1
+local x
+
+--comment2
+x = 1
+
+print(<?x?>)
+]]},
+hover = [[
+```lua
+local x: integer = 1
+```
+
+---
+
+comment1]]
+}
+
+TEST { {path = 'a.lua', content = [[
+local t = {}
+
+print(<?t?>['a b'])
+]]},
+hover = [[
+```lua
+local t: {
+    ['a b']: unknown,
 }
 ```]]
 }

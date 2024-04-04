@@ -4,6 +4,13 @@ local guide     = require 'parser.guide'
 local vm        = require 'vm.vm'
 local config    = require 'config'
 
+---@class parser.object
+---@field package _castTargetHead? parser.object | vm.global | false
+---@field package _validVersions? table<string, boolean>
+---@field package _deprecated? parser.object | false
+---@field package _async? boolean
+---@field package _nodiscard? boolean
+
 ---获取class与alias
 ---@param suri uri
 ---@param name? string
@@ -41,10 +48,36 @@ function vm.isMetaFile(uri)
     for _, doc in ipairs(status.ast.docs) do
         if doc.type == 'doc.meta' then
             cache.isMeta = true
+            cache.metaName = doc.name
             return true
         end
     end
     return false
+end
+
+---@param uri uri
+---@return string?
+function vm.getMetaName(uri)
+    if not vm.isMetaFile(uri) then
+        return nil
+    end
+    local cache = files.getCache(uri)
+    if not cache then
+        return nil
+    end
+    if not cache.metaName then
+        return nil
+    end
+    return cache.metaName[1]
+end
+
+---@param uri uri
+---@return boolean
+function vm.isMetaFileRequireable(uri)
+    if not vm.isMetaFile(uri) then
+        return false
+    end
+    return vm.getMetaName(uri) ~= '_'
 end
 
 ---@param doc parser.object
@@ -112,6 +145,13 @@ local function getDeprecated(value)
             end
         end
     end
+    if value.type == 'function' then
+        local doc = getDeprecated(value.parent)
+        if doc then
+            value._deprecated = doc
+            return doc
+        end
+    end
     value._deprecated = false
     return nil
 end
@@ -163,6 +203,9 @@ local function isAsync(value)
         end
         value._async = false
         return false
+    end
+    if value.type == 'main' then
+        return true
     end
     return value.async == true
 end
@@ -403,4 +446,43 @@ function vm.isDiagDisabledAt(uri, position, name, err)
         end
     end
     return count > 0
+end
+
+---@param doc parser.object
+---@return (parser.object | vm.global)?
+function vm.getCastTargetHead(doc)
+    if doc._castTargetHead ~= nil then
+        return doc._castTargetHead or nil
+    end
+    local name = doc.name[1]:match '^[^%.]+'
+    if not name then
+        doc._castTargetHead = false
+        return nil
+    end
+    local loc = guide.getLocal(doc, name, doc.start)
+    if loc then
+        doc._castTargetHead = loc
+        return loc
+    end
+    local global = vm.getGlobal('variable', name)
+    if global then
+        doc._castTargetHead = global
+        return global
+    end
+    return nil
+end
+
+---@param doc parser.object
+---@param key string
+---@return boolean
+function vm.docHasAttr(doc, key)
+    if not doc.docAttr then
+        return false
+    end
+    for _, name in ipairs(doc.docAttr.names) do
+        if name[1] == key then
+            return true
+        end
+    end
+    return false
 end

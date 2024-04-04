@@ -26,6 +26,7 @@ local function founded(targets, results)
     return true
 end
 
+---@async
 function TEST(datas)
     local targetList = {}
     local sourceList
@@ -52,6 +53,7 @@ function TEST(datas)
             sourceUri = uri
         end
         files.setText(uri, newScript)
+        files.compileState(uri)
     end
 
     local _ <close> = function ()
@@ -486,7 +488,7 @@ TEST {
     {
         path = 'a.lua',
         content = [[
-            local <!x!>
+            local x
             return {
                 <!x!> = x,
             }
@@ -739,7 +741,7 @@ TEST {
 }
 
 
-if platform.OS == 'Linux' then
+if platform.os == 'linux' then
 
 TEST {
     {

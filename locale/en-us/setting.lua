@@ -1,5 +1,7 @@
 ---@diagnostic disable: undefined-global
 
+config.addonManager.enable        =
+"Whether the addon manager is enabled or not."
 config.runtime.version            =
 "Lua runtime version."
 config.runtime.path               =
@@ -25,7 +27,7 @@ config.runtime.unicodeName        =
 config.runtime.nonstandardSymbol  =
 "Supports non-standard symbols. Make sure that your runtime environment supports these symbols."
 config.runtime.plugin             =
-"Plugin path. Please read [wiki](https://github.com/sumneko/lua-language-server/wiki/Plugins) to learn more."
+"Plugin path. Please read [wiki](https://luals.github.io/wiki/plugins) to learn more."
 config.runtime.pluginArgs         =
 "Additional arguments for the plugin."
 config.runtime.fileEncoding       =
@@ -77,8 +79,16 @@ Modify the diagnostic needed file status in a group.
 `Fallback` means that diagnostics in this group are controlled by `diagnostics.neededFileStatus` separately.
 Other settings will override individual settings without end of `!`.
 ]]
+config.diagnostics.workspaceEvent =
+"Set the time to trigger workspace diagnostics."
+config.diagnostics.workspaceEvent.OnChange =
+"Trigger workspace diagnostics when the file is changed."
+config.diagnostics.workspaceEvent.OnSave =
+"Trigger workspace diagnostics when the file is saved."
+config.diagnostics.workspaceEvent.None =
+"Disable workspace diagnostics."
 config.diagnostics.workspaceDelay =
-"Latency (milliseconds) for workspace diagnostics. When you start the workspace, or edit any file, the entire workspace will be re-diagnosed in the background. Set to negative to disable workspace diagnostics."
+"Latency (milliseconds) for workspace diagnostics."
 config.diagnostics.workspaceRate  =
 "Workspace diagnostics run rate (%). Decreasing this value reduces CPU usage, but also reduces the speed of workspace diagnostics. The diagnosis of the file you are currently editing is always done at full speed and is not affected by this setting."
 config.diagnostics.libraryFiles   =
@@ -125,7 +135,7 @@ Automatic detection and adaptation of third-party libraries, currently supported
 * Jass
 ]]
 config.workspace.userThirdParty          =
-'Add private third-party library configuration file paths here, please refer to the built-in [configuration file path](https://github.com/sumneko/lua-language-server/tree/master/meta/3rd)'
+'Add private third-party library configuration file paths here, please refer to the built-in [configuration file path](https://github.com/LuaLS/lua-language-server/tree/master/meta/3rd)'
 config.workspace.supportScheme           =
 'Provide language server for the Lua files of the following scheme.'
 config.completion.enable                 =
@@ -248,6 +258,8 @@ config.hint.semicolon.SameLine            =
 'When two statements are on the same line, display a semicolon between them.'
 config.hint.semicolon.Disable            =
 'Disable virtual semicolons.'
+config.codeLens.enable                   =
+'Enable code lens.'
 config.format.enable                     =
 'Enable code formatter.'
 config.format.defaultConfig              =
@@ -257,20 +269,16 @@ Read [formatter docs](https://github.com/CppCXY/EmmyLuaCodeStyle/tree/master/doc
 ]]
 config.spell.dict                        =
 'Custom words for spell checking.'
+config.nameStyle.config                  =
+'Set name style config'
 config.telemetry.enable                  =
 [[
-Enable telemetry to send your editor information and error logs over the network. Read our privacy policy [here](https://github.com/sumneko/lua-language-server/wiki/Home#privacy).
+Enable telemetry to send your editor information and error logs over the network. Read our privacy policy [here](https://luals.github.io/privacy/#language-server).
 ]]
 config.misc.parameters                   =
-'[Command line parameters](https://github.com/sumneko/lua-telemetry-server/tree/master/method) when starting the language service in VSCode.'
-config.IntelliSense.traceLocalSet        =
-'Please read [wiki](https://github.com/sumneko/lua-language-server/wiki/IntelliSense-optional-features) to learn more.'
-config.IntelliSense.traceReturn          =
-'Please read [wiki](https://github.com/sumneko/lua-language-server/wiki/IntelliSense-optional-features) to learn more.'
-config.IntelliSense.traceBeSetted        =
-'Please read [wiki](https://github.com/sumneko/lua-language-server/wiki/IntelliSense-optional-features) to learn more.'
-config.IntelliSense.traceFieldInject     =
-'Please read [wiki](https://github.com/sumneko/lua-language-server/wiki/IntelliSense-optional-features) to learn more.'
+'[Command line parameters](https://github.com/LuaLS/lua-telemetry-server/tree/master/method) when starting the language server in VSCode.'
+config.misc.executablePath               =
+'Specify the executable path in VSCode.'
 config.type.castNumberToInteger          =
 'Allowed to assign the `number` type to the `integer` type.'
 config.type.weakUnionCheck               =
@@ -285,6 +293,18 @@ When checking the type of union type, ignore the `nil` in it.
 
 When this setting is `false`, the `number|nil` type cannot be assigned to the `number` type. It can be with `true`.
 ]]
+config.type.inferParamType               =
+[[
+When a parameter type is not annotated, it is inferred from the function's call sites.
+
+When this setting is `false`, the type of the parameter is `any` when it is not annotated.
+]]
+config.doc.privateName                   =
+'Treat specific field names as private, e.g. `m_*` means `XXX.m_id` and `XXX.m_type` are private, witch can only be accessed in the class where the definition is located.'
+config.doc.protectedName                 =
+'Treat specific field names as protected, e.g. `m_*` means `XXX.m_id` and `XXX.m_type` are protected, witch can only be accessed in the class where the definition is located and its subclasses.'
+config.doc.packageName                   =
+'Treat specific field names as package, e.g. `m_*` means `XXX.m_id` and `XXX.m_type` are package, witch can only be accessed in the file where the definition is located.'
 config.diagnostics['unused-local']          =
 'Enable unused local variable diagnostics.'
 config.diagnostics['unused-function']       =
@@ -319,3 +339,104 @@ config.diagnostics['empty-block']           =
 'Enable empty code block diagnostics.'
 config.diagnostics['redundant-value']       =
 'Enable the redundant values assigned diagnostics. It\'s raised during assignment operation, when the number of values is higher than the number of objects being assigned.'
+config.diagnostics['assign-type-mismatch']  =
+'Enable diagnostics for assignments in which the value\'s type does not match the type of the assigned variable.'
+config.diagnostics['await-in-sync']         =
+'Enable diagnostics for calls of asynchronous functions within a synchronous function.'
+config.diagnostics['cast-local-type']    =
+'Enable diagnostics for casts of local variables where the target type does not match the defined type.'
+config.diagnostics['cast-type-mismatch']    =
+'Enable diagnostics for casts where the target type does not match the initial type.'
+config.diagnostics['circular-doc-class']    =
+'Enable diagnostics for two classes inheriting from each other introducing a circular relation.'
+config.diagnostics['close-non-object']      =
+'Enable diagnostics for attempts to close a variable with a non-object.'
+config.diagnostics['code-after-break']      =
+'Enable diagnostics for code placed after a break statement in a loop.'
+config.diagnostics['codestyle-check']       =
+'Enable diagnostics for incorrectly styled lines.'
+config.diagnostics['count-down-loop']       =
+'Enable diagnostics for `for` loops which will never reach their max/limit because the loop is incrementing instead of decrementing.'
+config.diagnostics['deprecated']            =
+'Enable diagnostics to highlight deprecated API.'
+config.diagnostics['different-requires']    =
+'Enable diagnostics for files which are required by two different paths.'
+config.diagnostics['discard-returns']       =
+'Enable diagnostics for calls of functions annotated with `---@nodiscard` where the return values are ignored.'
+config.diagnostics['doc-field-no-class']    =
+'Enable diagnostics to highlight a field annotation without a defining class annotation.'
+config.diagnostics['duplicate-doc-alias']   =
+'Enable diagnostics for a duplicated alias annotation name.'
+config.diagnostics['duplicate-doc-field']   =
+'Enable diagnostics for a duplicated field annotation name.'
+config.diagnostics['duplicate-doc-param']   =
+'Enable diagnostics for a duplicated param annotation name.'
+config.diagnostics['duplicate-set-field']   =
+'Enable diagnostics for setting the same field in a class more than once.'
+config.diagnostics['incomplete-signature-doc']    =
+'Incomplete @param or @return annotations for functions.'
+config.diagnostics['invisible']             =
+'Enable diagnostics for accesses to fields which are invisible.'
+config.diagnostics['missing-global-doc']    =
+'Missing annotations for globals! Global functions must have a comment and annotations for all parameters and return values.'
+config.diagnostics['missing-local-export-doc'] =
+'Missing annotations for exported locals! Exported local functions must have a comment and annotations for all parameters and return values.'
+config.diagnostics['missing-parameter']     =
+'Enable diagnostics for function calls where the number of arguments is less than the number of annotated function parameters.'
+config.diagnostics['missing-return']        =
+'Enable diagnostics for functions with return annotations which have no return statement.'
+config.diagnostics['missing-return-value']  =
+'Enable diagnostics for return statements without values although the containing function declares returns.'
+config.diagnostics['need-check-nil']        =
+'Enable diagnostics for variable usages if `nil` or an optional (potentially `nil`) value was assigned to the variable before.'
+config.diagnostics['no-unknown']            =
+'Enable diagnostics for cases in which the type cannot be inferred.'
+config.diagnostics['not-yieldable']         =
+'Enable diagnostics for calls to `coroutine.yield()` when it is not permitted.'
+config.diagnostics['param-type-mismatch']   =
+'Enable diagnostics for function calls where the type of a provided parameter does not match the type of the annotated function definition.'
+config.diagnostics['redundant-return']      =
+'Enable diagnostics for return statements which are not needed because the function would exit on its own.'
+config.diagnostics['redundant-return-value']=
+'Enable diagnostics for return statements which return an extra value which is not specified by a return annotation.'
+config.diagnostics['return-type-mismatch']  =
+'Enable diagnostics for return values whose type does not match the type declared in the corresponding return annotation.'
+config.diagnostics['spell-check']           =
+'Enable diagnostics for typos in strings.'
+config.diagnostics['name-style-check']      =
+'Enable diagnostics for name style.'
+config.diagnostics['unbalanced-assignments']=
+'Enable diagnostics on multiple assignments if not all variables obtain a value (e.g., `local x,y = 1`).'
+config.diagnostics['undefined-doc-class']   =
+'Enable diagnostics for class annotations in which an undefined class is referenced.'
+config.diagnostics['undefined-doc-name']    =
+'Enable diagnostics for type annotations referencing an undefined type or alias.'
+config.diagnostics['undefined-doc-param']   =
+'Enable diagnostics for cases in which a parameter annotation is given without declaring the parameter in the function definition.'
+config.diagnostics['undefined-field']       =
+'Enable diagnostics for cases in which an undefined field of a variable is read.'
+config.diagnostics['unknown-cast-variable'] =
+'Enable diagnostics for casts of undefined variables.'
+config.diagnostics['unknown-diag-code']     =
+'Enable diagnostics in cases in which an unknown diagnostics code is entered.'
+config.diagnostics['unknown-operator']      =
+'Enable diagnostics for unknown operators.'
+config.diagnostics['unreachable-code']      =
+'Enable diagnostics for unreachable code.'
+config.diagnostics['global-element']       =
+'Enable diagnostics to warn about global elements.'
+config.typeFormat.config                    =
+'Configures the formatting behavior while typing Lua code.'
+config.typeFormat.config.auto_complete_end  =
+'Controls if `end` is automatically completed at suitable positions.'
+config.typeFormat.config.auto_complete_table_sep =
+'Controls if a separator is automatically appended at the end of a table declaration.'
+config.typeFormat.config.format_line        =
+'Controls if a line is formatted at all.'
+
+command.exportDocument =
+'Lua: Export Document ...'
+command.addon_manager.open =
+'Lua: Open Addon Manager ...'
+command.reloadFFIMeta =
+'Lua: Reload luajit ffi meta'

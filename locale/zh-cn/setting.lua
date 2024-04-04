@@ -1,5 +1,7 @@
 ---@diagnostic disable: undefined-global
 
+config.addonManager.enable        =
+"是否启用扩展的附加插件管理器(Addon Manager)"
 config.runtime.version            =
 "Lua运行版本。"
 config.runtime.path               =
@@ -25,7 +27,7 @@ config.runtime.unicodeName        =
 config.runtime.nonstandardSymbol  =
 "支持非标准的符号。请务必确认你的运行环境支持这些符号。"
 config.runtime.plugin             =
-"插件路径，请查阅[文档](https://github.com/sumneko/lua-language-server/wiki/Plugins)了解用法。"
+"插件路径，请查阅[文档](https://luals.github.io/wiki/plugins)了解用法。"
 config.runtime.pluginArgs         = -- TODO: need translate!
 "Additional arguments for the plugin."
 config.runtime.fileEncoding       =
@@ -76,8 +78,16 @@ config.diagnostics.groupFileStatus =
 设置为 `Fallback` 意味着组中的诊断由 `diagnostics.neededFileStatus` 单独设置。
 其他设置将覆盖单独设置，但是不会覆盖以 `!` 结尾的设置。
 ]]
+config.diagnostics.workspaceEvent =
+"设置触发工作区诊断的时机。"
+config.diagnostics.workspaceEvent.OnChange =
+"当文件发生变化时触发工作区诊断。"
+config.diagnostics.workspaceEvent.OnSave =
+"当文件保存时触发工作区诊断。"
+config.diagnostics.workspaceEvent.None =
+"关闭工作区诊断。"
 config.diagnostics.workspaceDelay =
-"进行工作区诊断的延迟（毫秒）。当你启动工作区，或编辑了任意文件后，将会在后台对整个工作区进行重新诊断。设置为负数可以禁用工作区诊断。"
+"进行工作区诊断的延迟（毫秒）。"
 config.diagnostics.workspaceRate  =
 "工作区诊断的运行速率（百分比）。降低该值会减少CPU占用，但是也会降低工作区诊断的速度。你当前正在编辑的文件的诊断总是全速完成，不受该选项影响。"
 config.diagnostics.libraryFiles   =
@@ -124,7 +134,7 @@ config.workspace.checkThirdParty  =
 * Jass
 ]]
 config.workspace.userThirdParty          =
-'在这里添加私有的第三方库适配文件路径，请参考内置的[配置文件路径](https://github.com/sumneko/lua-language-server/tree/master/meta/3rd)'
+'在这里添加私有的第三方库适配文件路径，请参考内置的[配置文件路径](https://github.com/LuaLS/lua-language-server/tree/master/meta/3rd)'
 config.workspace.supportScheme           =
 '为以下 scheme 的lua文件提供语言服务。'
 config.completion.enable                 =
@@ -247,6 +257,8 @@ config.hint.semicolon.SameLine           =
 '2个语句在同一行时，在它们之间显示分号。'
 config.hint.semicolon.Disable            =
 '禁用虚拟分号。'
+config.codeLens.enable                   =
+'启用代码度量。'
 config.format.enable                     =
 '启用代码格式化程序。'
 config.format.defaultConfig              =
@@ -256,20 +268,16 @@ config.format.defaultConfig              =
 ]]
 config.spell.dict                        =
 '拼写检查的自定义单词。'
+config.nameStyle.config                  =
+'设定命名风格检查的配置'
 config.telemetry.enable                  =
 [[
-启用遥测，通过网络发送你的编辑器信息与错误日志。在[此处](https://github.com/sumneko/lua-language-server/wiki/Home#privacy)阅读我们的隐私声明。
+启用遥测，通过网络发送你的编辑器信息与错误日志。在[此处](https://luals.github.io/privacy/#language-server)阅读我们的隐私声明。
 ]]
 config.misc.parameters                   =
-'VSCode中启动语言服务时的[命令行参数](https://github.com/sumneko/lua-language-server/wiki/Getting-Started#arguments)。'
-config.IntelliSense.traceLocalSet        =
-'请查阅[文档](https://github.com/sumneko/lua-language-server/wiki/IntelliSense-optional-features)了解用法。'
-config.IntelliSense.traceReturn          =
-'请查阅[文档](https://github.com/sumneko/lua-language-server/wiki/IntelliSense-optional-features)了解用法。'
-config.IntelliSense.traceBeSetted        =
-'请查阅[文档](https://github.com/sumneko/lua-language-server/wiki/IntelliSense-optional-features)了解用法。'
-config.IntelliSense.traceFieldInject     =
-'请查阅[文档](https://github.com/sumneko/lua-language-server/wiki/IntelliSense-optional-features)了解用法。'
+'VSCode中启动语言服务时的[命令行参数](https://luals.github.io/wiki/usage#arguments)。'
+config.misc.executablePath               =
+'VSCode中指定可执行文件路径。'
 config.type.castNumberToInteger          =
 '允许将 `number` 类型赋给 `integer` 类型。'
 config.type.weakUnionCheck               =
@@ -284,6 +292,18 @@ config.type.weakNilCheck                 =
 
 此设置为 `false` 时，`numer|nil` 类型无法赋给 `number` 类型；为 `true` 是则可以。
 ]]
+config.type.inferParamType               =
+[[
+未注释参数类型时，参数类型由函数传入参数推断。
+
+如果设置为 "false"，则在未注释时，参数类型为 "any"。
+]]
+config.doc.privateName                   =
+'将特定名称的字段视为私有，例如 `m_*` 意味着 `XXX.m_id` 与 `XXX.m_type` 是私有字段，只能在定义所在的类中访问。'
+config.doc.protectedName                 =
+'将特定名称的字段视为受保护，例如 `m_*` 意味着 `XXX.m_id` 与 `XXX.m_type` 是受保护的字段，只能在定义所在的类极其子类中访问。'
+config.doc.packageName                   =
+'将特定名称的字段视为package，例如 `m_*` 意味着 `XXX.m_id` 与 `XXX.m_type` 只能在定义所在的文件中访问。'
 config.diagnostics['unused-local']          =
 '未使用的局部变量'
 config.diagnostics['unused-function']       =
@@ -318,3 +338,104 @@ config.diagnostics['empty-block']           =
 '空代码块'
 config.diagnostics['redundant-value']       =
 '赋值操作时，值的数量比被赋值的对象多'
+config.diagnostics['assign-type-mismatch']  =
+'值类型与赋值变量类型不匹配'
+config.diagnostics['await-in-sync']         =
+'同步函数中异步函数调用'
+config.diagnostics['cast-local-type']    =
+'已显式定义变量类型与要定义的值的类型不匹配'
+config.diagnostics['cast-type-mismatch']    =
+'变量被转换为与其初始类型不匹配的类型'
+config.diagnostics['circular-doc-class']    =
+'两个类相互继承并互相循环'
+config.diagnostics['close-non-object']      = -- TODO: need translate!
+'Enable diagnostics for attempts to close a variable with a non-object.'
+config.diagnostics['code-after-break']      =
+'放在循环中break语句后面的代码'
+config.diagnostics['codestyle-check']       = -- TODO: need translate!
+'Enable diagnostics for incorrectly styled lines.'
+config.diagnostics['count-down-loop']       =
+'for循环永远无法达到最大/极限值(在递减时递增)'
+config.diagnostics['deprecated']            =
+'变量已被标记为deprecated(过时)但仍在使用'
+config.diagnostics['different-requires']    =
+'required的同一个文件使用了两个不同的名字'
+config.diagnostics['discard-returns']       =
+'函数的返回值被忽略(函数被`@nodiscard`标记时)'
+config.diagnostics['doc-field-no-class']    =
+'为不存在的类`@class`标记`@field`字段'
+config.diagnostics['duplicate-doc-alias']   =
+'`@alias`字段的名字冲突'
+config.diagnostics['duplicate-doc-field']   =
+'`@field`字段的名字冲突'
+config.diagnostics['duplicate-doc-param']   =
+'`@param`字段的名字冲突'
+config.diagnostics['duplicate-set-field']   =
+'在一个类中多次定义同一字段'
+config.diagnostics['incomplete-signature-doc'] =
+'`@param`或`@return`的注释不完整'
+config.diagnostics['invisible']             =
+'使用不可见的值'
+config.diagnostics['missing-global-doc']    =
+'全局变量的注释缺失(全局函数必须为所有参数和返回值提供注释和注释)'
+config.diagnostics['missing-local-export-doc'] =
+'导出的本地函数缺少注释(导出的本地函数必须有包括本身以及所有参数和返回值的注释)'
+config.diagnostics['missing-parameter']     =
+'函数参数数少于注释函数参数数'
+config.diagnostics['missing-return']        =
+'函数带有返回注释而无返回语句'
+config.diagnostics['missing-return-value']  =
+'函数无值返回但函数使用`@return`标记了返回值'
+config.diagnostics['need-check-nil']        =
+'变量之前被赋值为`nil`或可选值(可能为 `nil`)'
+config.diagnostics['no-unknown']            =
+'变量的未知类型无法推断'
+config.diagnostics['not-yieldable']         =
+'不允许调用 `coroutine.yield()` '
+config.diagnostics['param-type-mismatch']   =
+'给定参数的类型与函数定义所要求的类型(`@param`)不匹配'
+config.diagnostics['redundant-return']      =
+'当放置一个不需要的返回值时触发(函数会自行退出)'
+config.diagnostics['redundant-return-value']=
+'返回`@return`注释未指定的额外值'
+config.diagnostics['return-type-mismatch']  =
+'返回值的类型与`@return`中声明的类型不匹配'
+config.diagnostics['spell-check']           = -- TODO: need translate!
+'Enable diagnostics for typos in strings.'
+config.diagnostics['name-style-check']      = -- TODO: need translate!
+'变量的名称样式检查'
+config.diagnostics['unbalanced-assignments']=
+'多重赋值时没有赋值所有变量(如`local x,y = 1`)'
+config.diagnostics['undefined-doc-class']   =
+'在`@class`注解中引用未定义的类。'
+config.diagnostics['undefined-doc-name']    =
+'在`@type`注解中引用未定义的类型或`@alias`'
+config.diagnostics['undefined-doc-param']   =
+'函数声明中`@param`引用了未定义的参数'
+config.diagnostics['undefined-field']       =
+'引用变量的未定义字段'
+config.diagnostics['unknown-cast-variable'] =
+'使用`@cast`对未定义变量的强制转换'
+config.diagnostics['unknown-diag-code']     =
+'未知的诊断代码'
+config.diagnostics['unknown-operator']      =
+'未知的运算符'
+config.diagnostics['unreachable-code']      =
+'不可达的代码'
+config.diagnostics['global-element']       = -- TODO: need translate!
+'Enable diagnostics to warn about global elements.'
+config.typeFormat.config                    =
+'配置输入Lua代码时的格式化行为'
+config.typeFormat.config.auto_complete_end  =
+'是否在合适的位置自动完成 `end`'
+config.typeFormat.config.auto_complete_table_sep =
+'是否在table末尾自动添加分隔符'
+config.typeFormat.config.format_line        =
+'是否对某一行进行格式化'
+
+command.exportDocument =
+'Lua: 导出文档...'
+command.addon_manager.open =
+'Lua: 打开插件管理器...'
+command.reloadFFIMeta =
+'Lua: 重新生成luajit的FFI模块C语言元数据'

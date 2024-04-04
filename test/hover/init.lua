@@ -5,33 +5,17 @@ local config     = require 'config'
 
 rawset(_G, 'TEST', true)
 
-local accept = {
-    ['local']          = true,
-    ['setlocal']       = true,
-    ['getlocal']       = true,
-    ['setglobal']      = true,
-    ['getglobal']      = true,
-    ['field']          = true,
-    ['method']         = true,
-    ['string']         = true,
-    ['number']         = true,
-    ['integer']        = true,
-    ['doc.type.name']  = true,
-    ['doc.class.name'] = true,
-    ['function']       = true,
-}
-
 ---@diagnostic disable: await-in-sync
 function TEST(script)
     return function (expect)
         local newScript, catched = catch(script, '?')
-        files.setText('', newScript)
-        local hover = core.byUri('', catched['?'][1][1])
+        files.setText(TESTURI, newScript)
+        local hover = core.byUri(TESTURI, catched['?'][1][1])
         assert(hover)
         expect = expect:gsub('^[\r\n]*(.-)[\r\n]*$', '%1'):gsub('\r\n', '\n')
         local label = hover:string():gsub('\r\n', '\n'):match('```lua[\r\n]*(.-)[\r\n]*```')
         assert(expect == label)
-        files.remove('')
+        files.remove(TESTURI)
     end
 end
 
@@ -254,14 +238,14 @@ TEST [[
 string.<?sub?>()
 ]]
 [[
-function string.sub(s: string, i: integer, j?: integer)
+function string.sub(s: string|number, i: integer, j?: integer)
   -> string
 ]]
 
 TEST[[
 ('xx'):<?sub?>()
 ]]
-[[function string.sub(s: string, i: integer, j?: integer)
+[[function string.sub(s: string|number, i: integer, j?: integer)
   -> string]]
 
 TEST [[
@@ -288,7 +272,7 @@ TEST [[
 string.<?lower?>()
 ]]
 [[
-function string.lower(s: string)
+function string.lower(s: string|number)
   -> string
 ]]
 
@@ -312,7 +296,6 @@ end
 ]]
 [[
 function x()
-  -> unknown
 ]]
 
 TEST [[
@@ -437,7 +420,7 @@ local t: {
     [1]: integer = 2,
     [true]: integer = 3,
     [5.5]: integer = 4,
-    b: integer = 7,
+    ["b"]: integer = 7,
     ["012"]: integer = 8,
 }
 ]]
@@ -507,7 +490,7 @@ local self: {
     id: integer = 1,
     remove: function,
     __index: table,
-    __name: string = "obj",
+    __name: string = 'obj',
 }
 ]]
 
@@ -627,7 +610,7 @@ end
 local <?r?> = a(1)
 ]]
 [[
-local r: string = "a"
+local r: string = 'a'
 ]]
 
 TEST[[
@@ -637,7 +620,7 @@ end
 local _, <?r?> = pcall(a, 1)
 ]]
 [[
-local r: string = "a"
+local r: string = 'a'
 ]]
 
 TEST[[
@@ -650,7 +633,7 @@ local n: integer
 TEST[[
 local <?x?> = '\a'
 ]]
-[[local x: string = "\007"]]
+[[local x: string = '\007']]
 
 TEST [[
 local <?t?> = {
@@ -844,9 +827,9 @@ local <?t?> = {
 ]]
 [[
 local t: {
-    [1]: string = "aaa",
-    [2]: string = "bbb",
-    [3]: string = "ccc",
+    [1]: string = 'aaa',
+    [2]: string = 'bbb',
+    [3]: string = 'ccc',
 }
 ]]
 
@@ -1243,6 +1226,17 @@ local <?x?>
 ]]
 [[
 local x: table<ClassA, ClassB>
+]]
+
+TEST [[
+---@type [ClassA, ClassB]
+local <?x?>
+]]
+[[
+local x: [ClassA, ClassB] {
+    [1]: ClassA,
+    [2]: ClassB,
+}
 ]]
 
 --TEST [[
@@ -1685,7 +1679,7 @@ TEST [[
 local <?t?>
 ]]
 [[
-local t: {
+local t: { x: string, y: number, z: boolean } {
     x: string,
     y: number,
     z: boolean,
@@ -1729,13 +1723,13 @@ local <?t?> = {
 ]]
 [[
 local t: {
-    x: string = "e",
-    y: string = "f",
-    z: string = "g",
-    [1]: string = "a",
-    [2]: string = "b",
-    [3]: string = "c"|"h",
-    [10]: string = "d",
+    x: string = 'e',
+    y: string = 'f',
+    ['z']: string = 'g',
+    [10]: string = 'd',
+    [1]: string = 'a',
+    [2]: string = 'b',
+    [3]: string = 'c'|'h',
 }
 ]]
 
@@ -1847,7 +1841,7 @@ local t = {
 local <?x?> = t[#t]
 ]]
 [[
-local x: string = "x"
+local x: string = 'x'
 ]]
 
 TEST [[
@@ -1881,10 +1875,10 @@ local <?x?> = {
 ]]
 [[
 local x: {
-    x: string = "",
-    y: string = "",
-    _x: string = "",
-    _y: string = "",
+    x: string = '',
+    y: string = '',
+    _x: string = '',
+    _y: string = '',
 }
 ]]
 
@@ -2136,4 +2130,372 @@ local <?x?> = 1 << 2
 ]]
 [[
 local x: integer = 4
+]]
+
+TEST [[
+local function test1()
+    return 1, 2, 3
+end
+
+local function <?test2?>()
+    return test1()
+end
+]]
+[[
+function test2()
+  -> integer
+  2. integer
+  3. integer
+]]
+
+TEST [[
+---@param x number
+---@return boolean
+local function <?f?>(
+    x
+)
+end
+]]
+
+TEST [[
+---@class A
+---@field private x number
+---@field y number
+local <?t?>
+]]
+[[
+local t: A {
+    x: number,
+    y: number,
+}
+]]
+
+TEST [[
+---@class A
+---@field private x number
+---@field y number
+
+---@type A
+local <?t?>
+]]
+[[
+local t: A {
+    y: number,
+}
+]]
+
+TEST [[
+---@class A
+---@field private x number
+---@field y number
+<?t?> = {}
+]]
+[[
+(global) t: A {
+    x: number,
+    y: number,
+}
+]]
+
+TEST [[
+---@class A
+---@field private x number
+---@field y number
+
+---@type A
+<?t?> = {}
+]]
+[[
+(global) t: A {
+    y: number,
+}
+]]
+
+TEST [[
+---@class A
+---@field private x number
+---@field y number
+
+---@type A
+v.<?t?> = {}
+]]
+[[
+(global) v.t: A {
+    y: number,
+}
+]]
+
+TEST [[
+---@class A
+---@field private x number
+---@field protected y number
+---@field z number
+
+---@type A
+local <?t?>
+]]
+[[
+local t: A {
+    z: number,
+}
+]]
+
+TEST [[
+---@class A
+---@field private x number
+---@field protected y number
+---@field z number
+
+---@class B: A
+local <?t?>
+]]
+[[
+local t: B {
+    y: number,
+    z: number,
+}
+]]
+
+TEST [[
+---@class A
+---@field private x number
+---@field protected y number
+---@field z number
+
+---@class B: A
+---@field private a number
+local <?t?>
+]]
+[[
+local t: B {
+    a: number,
+    y: number,
+    z: number,
+}
+]]
+
+TEST [[
+---@class A
+---@field private x number
+---@field protected y number
+---@field z number
+
+---@class B: A
+---@field private a number
+
+---@type B
+local <?t?>
+]]
+[[
+local t: B {
+    z: number,
+}
+]]
+
+TEST [[
+---@class A
+local mt = {}
+
+---@private
+function mt:init()
+end
+
+---@protected
+function mt:update()
+end
+
+function mt:get()
+end
+
+print(<?mt?>)
+]]
+[[
+local mt: A {
+    get: function,
+    init: function,
+    update: function,
+}
+]]
+
+TEST [[
+---@class A
+local mt = {}
+
+---@private
+function mt:init()
+end
+
+---@protected
+function mt:update()
+end
+
+function mt:get()
+end
+
+---@type A
+local <?obj?>
+]]
+[[
+local obj: A {
+    get: function,
+}
+]]
+
+TEST [[
+---@class A
+local mt = {}
+
+---@private
+function mt:init()
+end
+
+---@protected
+function mt:update()
+end
+
+function mt:get()
+end
+
+---@class B: A
+local <?obj?>
+]]
+[[
+local obj: B {
+    get: function,
+    update: function,
+}
+]]
+
+TEST [[
+---@class A
+local mt = {}
+
+---@private
+function mt:init()
+end
+
+---@protected
+function mt:update()
+end
+
+function mt:get()
+end
+
+---@class B: A
+
+---@type B
+local <?obj?>
+]]
+[[
+local obj: B {
+    get: function,
+}
+]]
+
+TEST [[
+---@class A
+local M = {}
+
+---@private
+M.x = 0
+
+---@private
+function M:init()
+    self.x = 1
+end
+
+---@type A
+local <?a?>
+]]
+[[
+local a: A
+]]
+
+TEST [[
+---@class A
+---@field x fun(): string
+
+---@type table<string, A>
+local obj
+
+local x = obj[''].<?x?>()
+]]
+[[
+(field) A.x: fun():string
+]]
+
+TEST [[
+---@class A
+---@field x number
+
+---@see <?A.x?>
+]]
+[[
+(field) A.x: number
+]]
+
+TEST [[
+---@type { [string]: string }[]
+local t
+
+print(<?t?>.foo)
+]]
+[[
+local t: { [string]: string }[] {
+    foo: unknown,
+}
+]]
+
+TEST [[
+local t = {
+    ['x'] = 1,
+    ['y'] = 2,
+}
+
+print(t.x, <?t?>.y)
+]]
+[[
+local t: {
+    ['x']: integer = 1,
+    ['y']: integer = 2,
+}
+]]
+
+TEST [[
+local enum = { a = 1, b = 2 }
+
+local <?t?> = {
+    [enum.a] = true,
+    [enum.b] = 2,
+    [3] = {}
+}
+]]
+[[
+local t: {
+    [1]: boolean = true,
+    [2]: integer = 2,
+    [3]: table,
+}
+]]
+
+TEST [[
+---@class A
+---@overload fun(x: number): boolean
+local <?x?>
+]]
+[[
+local x: A
+]]
+
+TEST [[
+---@type A
+local <?f?>
+
+---@enum A
+local t = {
+    x = f,
+}
+]]
+[[
+local f: A
 ]]

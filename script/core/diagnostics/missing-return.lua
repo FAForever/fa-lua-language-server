@@ -7,7 +7,7 @@ local await  = require 'await'
 ---@param block parser.object
 ---@return boolean
 local function hasReturn(block)
-    if block.hasReturn or block.hasError then
+    if block.hasReturn or block.hasExit then
         return true
     end
     if block.type == 'if' then
@@ -38,17 +38,6 @@ local function hasReturn(block)
     return false
 end
 
----@param func parser.object
----@return boolean
-local function isEmptyFunction(func)
-    if #func > 0 then
-        return false
-    end
-    local startRow  = guide.rowColOf(func.start)
-    local finishRow = guide.rowColOf(func.finish)
-    return finishRow - startRow <= 1
-end
-
 ---@async
 return function (uri, callback)
     local state = files.getState(uri)
@@ -56,14 +45,16 @@ return function (uri, callback)
         return
     end
 
+    local isMeta = vm.isMetaFile(uri)
+
     ---@async
     guide.eachSourceType(state.ast, 'function', function (source)
         -- check declare only
-        if isEmptyFunction(source) then
+        if isMeta and vm.isEmptyFunction(source) then
             return
         end
         await.delay()
-        if vm.countReturnsOfFunction(source, true) == 0 then
+        if vm.countReturnsOfSource(source) == 0 then
             return
         end
         if hasReturn(source) then
@@ -74,8 +65,7 @@ return function (uri, callback)
         if lastAction then
             pos = lastAction.range or lastAction.finish
         else
-            local row = guide.rowColOf(source.finish)
-            pos = guide.positionOf(row - 1, 0)
+            pos = source.keyword[3] or source.finish
         end
         callback {
             start   = pos,

@@ -60,6 +60,9 @@ local function makeOneSignature(source, oop, index)
         : gsub('%b()', function (str)
             return ('_'):rep(#str)
         end)
+        : gsub('%b{}', function (str)
+            return ('_'):rep(#str)
+        end)
         : gsub('[%[%]%(%)]', '_')
     for start, finish in converted:gmatch '%s*()[^,]+()' do
         i = i + 1
@@ -84,6 +87,39 @@ local function makeOneSignature(source, oop, index)
         index       = index or 1,
         description = hoverDesc(source),
     }
+end
+
+local function isEventNotMatch(call, src)
+    if not call.args or not src.args then
+        return false
+    end
+    local literal, index
+    for i = 1, 2 do
+        if not call.args[i] then
+            break
+        end
+        literal = guide.getLiteral(call.args[i])
+        if literal then
+            index = i
+            break
+        end
+    end
+    if not literal then
+        return false
+    end
+    local event = src.args[index]
+    if not event or event.type ~= 'doc.type.arg' then
+        return false
+    end
+    if not event.extends
+    or #event.extends.types ~= 1 then
+        return false
+    end
+    local eventLiteral = event.extends.types[1] and guide.getLiteral(event.extends.types[1])
+    if eventLiteral == nil then
+        return false
+    end
+    return eventLiteral ~= literal
 end
 
 ---@async
@@ -131,14 +167,29 @@ local function makeSignatures(text, call, pos)
     local signs = {}
     local node = vm.compileNode(func)
     ---@type vm.node
-    node = node:getData 'originNode' or node
+    node = node.originNode or node
     local mark = {}
     for src in node:eachObject() do
-        if src.type == 'function'
+        if (src.type == 'function' and not vm.isVarargFunctionWithOverloads(src))
         or src.type == 'doc.type.function' then
-            if not mark[src] then
+            if  not mark[src]
+            and not isEventNotMatch(call, src) then
                 mark[src] = true
                 signs[#signs+1] = makeOneSignature(src, oop, index)
+            end
+        elseif src.type == 'global' and src.cate == 'type' then
+            ---@cast src vm.global
+            for _, set in ipairs(src:getSets(guide.getUri(call))) do
+                if set.type == 'doc.class' then
+                    for _, overload in ipairs(set.calls) do
+                        local f = overload.overload
+                        if  not mark[f]
+                        and not isEventNotMatch(call, src) then
+                            mark[f] = true
+                            signs[#signs+1] = makeOneSignature(f, oop, index)
+                        end
+                    end
+                end
             end
         end
     end

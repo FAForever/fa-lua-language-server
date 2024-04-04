@@ -1,11 +1,11 @@
----@meta
+---@meta coroutine
 
 ---#DES 'coroutine'
 ---@class coroutinelib
 coroutine = {}
 
 ---#DES 'coroutine.create'
----@param f async fun()
+---@param f async fun(...):...
 ---@return thread
 ---@nodiscard
 function coroutine.create(f) end
@@ -17,6 +17,7 @@ function coroutine.create(f) end
 ---@nodiscard
 function coroutine.isyieldable(co) end
 ---#else
+---@version >5.2
 ---#DES 'coroutine.isyieldable'
 ---@return boolean
 ---@nodiscard
@@ -34,8 +35,7 @@ function coroutine.close(co) end
 ---@param co    thread
 ---@param val1? any
 ---@return boolean success
----@return any result
----@return ...
+---@return any ...
 function coroutine.resume(co, val1, ...) end
 
 ---#DES 'coroutine.running'
@@ -55,14 +55,14 @@ function coroutine.running() end
 function coroutine.status(co) end
 
 ---#DES 'coroutine.wrap'
----@param f async fun()
----@return fun()
+---@param f async fun(...):...
+---@return fun(...):...
 ---@nodiscard
 function coroutine.wrap(f) end
 
 ---#DES 'coroutine.yield'
 ---@async
----@return ...
+---@return any ...
 function coroutine.yield(...) end
 
 return coroutine

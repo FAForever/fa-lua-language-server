@@ -1,3 +1,5 @@
+---@meta
+
 ---@class fs.path
 ---@operator div: fs.path
 local fsPath = {}
@@ -18,14 +20,22 @@ end
 function fsPath:filename()
 end
 
+---@return fs.path
+function fsPath:stem()
+end
+
+---@return fs.path
+function fsPath:extension()
+end
+
 ---@class fs.status
 local fsStatus = {}
 
----@return string
+---@return 'none' | 'not_found' | 'regular' | 'directory' | 'symlink' | 'block' | 'character' | 'fifo' | 'junction' | 'unknown'
 function fsStatus:type()
 end
 
----@class fs
+---@class bee.filesystem
 local fs = {}
 
 ---@class fs.copy_options
@@ -34,7 +44,7 @@ local copy_options
 
 fs.copy_options = copy_options
 
----@param path string
+---@param path string|fs.path
 ---@return fs.path
 function fs.path(path)
 end
@@ -54,13 +64,18 @@ function fs.is_directory(path)
 end
 
 ---@param path fs.path
----@return fun():fs.path
+---@return fun():fs.path, fs.status
 function fs.pairs(path)
 end
 
 ---@param path fs.path
 ---@return fs.path
 function fs.canonical(path)
+end
+
+---@param path fs.path
+---@return fs.path
+function fs.fullpath(path)
 end
 
 ---@param path fs.path
@@ -84,8 +99,17 @@ end
 
 ---@param source fs.path
 ---@param target fs.path
----@param options? `fs.copy_options.overwrite_existing`
+---@param options? integer | `fs.copy_options.overwrite_existing`
 function fs.copy_file(source, target, options)
+end
+
+---@param oldPath fs.path
+---@param newPath fs.path
+function fs.rename(oldPath, newPath)
+end
+
+---@return fs.path
+function fs.current_path()
 end
 
 return fs

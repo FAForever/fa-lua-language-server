@@ -6,29 +6,6 @@ local vm     = require "vm.vm"
 local util   = require 'utility'
 local diagd  = require 'proto.diagnostic'
 
--- 把耗时最长的诊断放到最后面
-local diagSort = {
-    ['redundant-value']        = 100,
-    ['not-yieldable']          = 100,
-    ['deprecated']             = 100,
-    ['undefined-field']        = 110,
-    ['redundant-parameter']    = 110,
-    ['cast-local-type']        = 120,
-    ['assign-type-mismatch']   = 120,
-    ['param-type-mismatch']    = 120,
-    ['missing-return']         = 120,
-    ['missing-return-value']   = 120,
-    ['redundant-return-value'] = 120,
-}
-
-local diagList = {}
-for k in pairs(define.DiagnosticDefaultSeverity) do
-    diagList[#diagList+1] = k
-end
-table.sort(diagList, function (a, b)
-    return (diagSort[a] or 0) < (diagSort[b] or 0)
-end)
-
 local sleepRest = 0.0
 
 ---@async
@@ -117,20 +94,21 @@ end
 ---@param name string
 ---@param isScopeDiag boolean
 ---@param response async fun(result: any)
+---@return boolean
 local function check(uri, name, isScopeDiag, response)
     local disables = config.get(uri, 'Lua.diagnostics.disable')
     if util.arrayHas(disables, name) then
-        return
+        return false
     end
     local severity = getSeverity(uri, name)
     local status   = getStatus(uri, name)
 
     if status == 'None' then
-        return
+        return false
     end
 
     if status == 'Opened' and not files.isOpen(uri) then
-        return
+        return false
     end
 
     local level = define.DiagnosticSeverity[severity]
@@ -163,6 +141,25 @@ local function check(uri, name, isScopeDiag, response)
     if DIAGTIMES then
         DIAGTIMES[name] = (DIAGTIMES[name] or 0) + passed
     end
+    return true
+end
+
+local diagList
+local diagCosts = {}
+local diagCount = {}
+local function buildDiagList()
+    if not diagList then
+        diagList = {}
+        for name in pairs(define.DiagnosticDefaultSeverity) do
+            diagList[#diagList+1] = name
+        end
+    end
+    table.sort(diagList, function (a, b)
+        local time1 = (diagCosts[a] or 0) / (diagCount[a] or 1)
+        local time2 = (diagCosts[b] or 0) / (diagCount[b] or 1)
+        return time1 < time2
+    end)
+    return diagList
 end
 
 ---@async
@@ -176,9 +173,15 @@ return function (uri, isScopeDiag, response, checked)
         return nil
     end
 
-    for _, name in ipairs(diagList) do
+    for _, name in ipairs(buildDiagList()) do
         await.delay()
-        check(uri, name, isScopeDiag, response)
+        local clock = os.clock()
+        local suc = check(uri, name, isScopeDiag, response)
+        if suc then
+            local cost = os.clock() - clock
+            diagCosts[name] = (diagCosts[name] or 0) + cost
+            diagCount[name] = (diagCount[name] or 0) + 1
+        end
         if checked then
             checked(name)
         end

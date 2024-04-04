@@ -1,7 +1,7 @@
 DIAG_LINE_ONLY_SPACE    =
 'Line with spaces only.'
 DIAG_LINE_POST_SPACE    =
-'Line with postspace.'
+'Line with trailing space.'
 DIAG_UNUSED_LOCAL       =
 'Unused local `{}`.'
 DIAG_UNDEF_GLOBAL       =
@@ -114,6 +114,22 @@ DIAG_UNDEFINED_DOC_NAME               =
 'Undefined type or alias `{}`.'
 DIAG_UNDEFINED_DOC_PARAM              =
 'Undefined param `{}`.'
+DIAG_MISSING_GLOBAL_DOC_COMMENT       =
+'Missing comment for global function `{}`.'
+DIAG_MISSING_GLOBAL_DOC_PARAM         =
+'Missing @param annotation for parameter `{}` in global function `{}`.'
+DIAG_MISSING_GLOBAL_DOC_RETURN        =
+'Missing @return annotation at index `{}` in global function `{}`.'
+DIAG_MISSING_LOCAL_EXPORT_DOC_COMMENT  =
+'Missing comment for exported local function `{}`.'
+DIAG_MISSING_LOCAL_EXPORT_DOC_PARAM    =
+'Missing @param annotation for parameter `{}` in exported local function `{}`.'
+DIAG_MISSING_LOCAL_EXPORT_DOC_RETURN   =
+'Missing @return annotation at index `{}` in exported local function `{}`.'
+DIAG_INCOMPLETE_SIGNATURE_DOC_PARAM   =
+'Incomplete signature. Missing @param annotation for parameter `{}`.'
+DIAG_INCOMPLETE_SIGNATURE_DOC_RETURN  =
+'Incomplete signature. Missing @return annotation at index `{}`.'
 DIAG_UNKNOWN_DIAG_CODE                =
 'Unknown diagnostic code `{}`.'
 DIAG_CAST_LOCAL_TYPE                  =
@@ -129,21 +145,37 @@ DIAG_UNKNOWN_CAST_VARIABLE            =
 DIAG_CAST_TYPE_MISMATCH               =
 'Cannot convert `{def}` to `{ref}`。'
 DIAG_MISSING_RETURN_VALUE             =
-'At least {min} return values are required, but here only {rmax} values are returned.'
+'Annotations specify that at least {min} return value(s) are required, found {rmax} returned here instead.'
 DIAG_MISSING_RETURN_VALUE_RANGE       =
-'At least {min} return values are required, but here only {rmin} to {rmax} values are returned.'
+'Annotations specify that at least {min} return value(s) are required, found {rmin} to {rmax} returned here instead.'
 DIAG_REDUNDANT_RETURN_VALUE           =
-'At most {max} values returned, but the {rmax}th value was returned here.'
+'Annotations specify that at most {max} return value(s) are required, found {rmax} returned here instead.'
 DIAG_REDUNDANT_RETURN_VALUE_RANGE     =
-'At most {max} values returned, but {rmin}th to {rmax}th values were returned here.'
+'Annotations specify that at most {max} return value(s) are required, found {rmin} to {rmax} returned here instead.'
 DIAG_MISSING_RETURN                   =
-'Return value is required here.'
+'Annotations specify that a return value is required here.'
 DIAG_RETURN_TYPE_MISMATCH             =
-'The type of the {index} return value is `{def}`, but the actual return is `{ref}`.'
+'Annotations specify that return value #{index} has a type of `{def}`, returning value of type `{ref}` here instead.'
 DIAG_UNKNOWN_OPERATOR                 =
 'Unknown operator `{}`.'
 DIAG_UNREACHABLE_CODE                 =
 'Unreachable code.'
+DIAG_INVISIBLE_PRIVATE                =
+'Field `{field}` is private, it can only be accessed in class `{class}`.'
+DIAG_INVISIBLE_PROTECTED              =
+'Field `{field}` is protected, it can only be accessed in class `{class}` and its subclasses.'
+DIAG_INVISIBLE_PACKAGE                =
+'Field `{field}` can only be accessed in same file `{uri}`.'
+DIAG_GLOBAL_ELEMENT                   =
+'Element is global.'
+DIAG_MISSING_FIELDS                   =
+'Missing required fields in type `{1}`: {2}'
+DIAG_INJECT_FIELD                     =
+'Fields cannot be injected into the reference of `{class}` for `{field}`. {fix}'
+DIAG_INJECT_FIELD_FIX_CLASS           =
+'To do so, use `---@class` for `{node}`.'
+DIAG_INJECT_FIELD_FIX_TABLE           =
+'To allow injection, add `{fix}` to the definition.'
 
 MWS_NOT_SUPPORT         =
 '{} does not support multi workspace for now, I may need to restart to support the new workspace ...'
@@ -171,9 +203,9 @@ WORKSPACE_DIAGNOSTIC      =
 WORKSPACE_SKIP_HUGE_FILE  =
 'For performance reasons, the parsing of this file has been stopped: {}'
 WORKSPACE_NOT_ALLOWED     =
-'Your workspace is set to `{}`. Lua language server refused to load this directory. Please check your configuration.[learn more here](https://github.com/sumneko/lua-language-server/wiki/FAQ#why-is-the-server-scanning-the-wrong-folder)'
+'Your workspace is set to `{}`. Lua language server refused to load this directory. Please check your configuration.[learn more here](https://luals.github.io/wiki/faq#why-is-the-server-scanning-the-wrong-folder)'
 WORKSPACE_SCAN_TOO_MUCH   =
-'More than {} files have been scanned. The current scanned directory is `{}`. Please confirm whether the configuration is correct.'
+'More than {} files have been scanned. The current scanned directory is `{}`. Please see the [FAQ](https://luals.github.io/wiki/faq/#how-can-i-improve-startup-speeds) to see how you can include fewer files. It is also possible that your [configuration is incorrect](https://luals.github.io/wiki/faq#why-is-the-server-scanning-the-wrong-folder).'
 
 PARSER_CRASH            =
 'Parser crashed! Last words:{}'
@@ -269,6 +301,14 @@ PARSER_INDEX_IN_FUNC_NAME =
 'The `[name]` form cannot be used in the name of a named function.'
 PARSER_UNKNOWN_ATTRIBUTE  =
 'Local attribute should be `const` or `close`'
+PARSER_AMBIGUOUS_SYNTAX   =
+'In Lua 5.1, the left brackets called by the function must be in the same line as the function.'
+PARSER_NEED_PAREN         =
+'Need to add a pair of parentheses.'
+PARSER_NESTING_LONG_MARK  =
+'Nesting of `[[...]]` is not allowed in Lua 5.1 .'
+PARSER_LOCAL_LIMIT        =
+'Only 200 active local variables and upvalues can be existed at the same time.'
 PARSER_LUADOC_MISS_CLASS_NAME           =
 '<class name> expected.'
 PARSER_LUADOC_MISS_EXTENDS_SYMBOL       =
@@ -414,6 +454,10 @@ ACTION_MARK_ASYNC       =
 'Mark current function as async.'
 ACTION_ADD_DICT         =
 'Add \'{}\' to workspace dict'
+ACTION_FIX_ADD_PAREN    =
+'Add parentheses.'
+ACTION_AUTOREQUIRE      =
+"Import '{}' as {}"
 
 COMMAND_DISABLE_DIAG       =
 'Disable diagnostics'
@@ -435,6 +479,8 @@ COMMAND_JSON_TO_LUA_FAILED =
 'Convert JSON to Lua failed: {}'
 COMMAND_ADD_DICT           =
 'Add Word to dictionary'
+COMMAND_REFERENCE_COUNT    =
+'{} references'
 
 COMPLETION_IMPORT_FROM           =
 'Import from {}'
@@ -512,7 +558,7 @@ WINDOW_APPLY_SETTING             =
 WINDOW_CHECK_SEMANTIC            =
 'If you are using the color theme in the market, you may need to modify `editor.semanticHighlighting.enabled` to `true` to make semantic tokens take effect.'
 WINDOW_TELEMETRY_HINT            =
-'Please allow sending anonymous usage data and error reports to help us further improve this extension. Read our privacy policy [here](https://github.com/sumneko/lua-language-server/wiki/Home#privacy) .'
+'Please allow sending anonymous usage data and error reports to help us further improve this extension. Read our privacy policy [here](https://luals.github.io/privacy#language-server) .'
 WINDOW_TELEMETRY_ENABLE          =
 'Allow'
 WINDOW_TELEMETRY_DISABLE         =
@@ -535,6 +581,14 @@ WINDOW_ASK_APPLY_LIBRARY         =
 'Do you need to configure your work environment as `{}`?'
 WINDOW_SEARCHING_IN_FILES        =
 'Searching in files...'
+WINDOW_CONFIG_LUA_DEPRECATED     =
+'`config.lua` is deprecated, please use `config.json` instead.'
+WINDOW_CONVERT_CONFIG_LUA        =
+'Convert to `config.json`'
+WINDOW_MODIFY_REQUIRE_PATH       =
+'Do you want to modify the require path?'
+WINDOW_MODIFY_REQUIRE_OK         =
+'Modify'
 
 CONFIG_LOAD_FAILED               =
 'Unable to read the settings file: {}'
@@ -542,6 +596,24 @@ CONFIG_LOAD_ERROR                =
 'Setting file loading error: {}'
 CONFIG_TYPE_ERROR                =
 'The setting file must be in lua or json format: {}'
+CONFIG_MODIFY_FAIL_SYNTAX_ERROR  =
+'Failed to modify settings, there are syntax errors in the settings file: {}'
+CONFIG_MODIFY_FAIL_NO_WORKSPACE  =
+[[
+Failed to modify settings:
+* The current mode is single-file mode, server cannot create `.luarc.json` without workspace.
+* The language client dose not support modifying settings from the server side.
+
+Please modify following settings manually:
+{}
+]]
+CONFIG_MODIFY_FAIL               =
+[[
+Failed to modify settings
+
+Please modify following settings manually:
+{}
+]]
 
 PLUGIN_RUNTIME_ERROR             =
 [[
@@ -576,6 +648,49 @@ CLI_CHECK_SUCCESS =
 'Diagnosis completed, no problems found'
 CLI_CHECK_RESULTS =
 'Diagnosis complete, {} problems found, see {}'
+CLI_DOC_INITING   =
+'Loading documents ...'
+CLI_DOC_DONE      =
+[[
+Document exporting completed!
+Raw data: {}
+Markdown(example): {}
+]]
+
+TYPE_ERROR_ENUM_GLOBAL_DISMATCH =
+'Type `{child}` cannot match enumeration type of `{parent}`'
+TYPE_ERROR_ENUM_GENERIC_UNSUPPORTED =
+'Cannot use generic `{child}` in enumeration'
+TYPE_ERROR_ENUM_LITERAL_DISMATCH =
+'Literal `{child}` cannot match the enumeration value of `{parent}`'
+TYPE_ERROR_ENUM_OBJECT_DISMATCH =
+'The object `{child}` cannot match the enumeration value of `{parent}`. They must be the same object'
+TYPE_ERROR_ENUM_NO_OBJECT =
+'The passed in enumeration value `{child}` is not recognized'
+TYPE_ERROR_INTEGER_DISMATCH =
+'Literal `{child}` cannot match integer `{parent}`'
+TYPE_ERROR_STRING_DISMATCH =
+'Literal `{child}` cannot match string `{parent}`'
+TYPE_ERROR_BOOLEAN_DISMATCH =
+'Literal `{child}` cannot match boolean `{parent}`'
+TYPE_ERROR_TABLE_NO_FIELD =
+'Field `{key}` does not exist in the table'
+TYPE_ERROR_TABLE_FIELD_DISMATCH =
+'The type of field `{key}` is `{child}`, which cannot match `{parent}`'
+TYPE_ERROR_CHILD_ALL_DISMATCH =
+'All subtypes in `{child}` cannot match `{parent}`'
+TYPE_ERROR_PARENT_ALL_DISMATCH =
+'`{child}` cannot match any subtypes in `{parent}`'
+TYPE_ERROR_UNION_DISMATCH =
+'`{child}` cannot match `{parent}`'
+TYPE_ERROR_OPTIONAL_DISMATCH =
+'Optional type cannot match `{parent}`'
+TYPE_ERROR_NUMBER_LITERAL_TO_INTEGER =
+'The number `{child}` cannot be converted to an integer'
+TYPE_ERROR_NUMBER_TYPE_TO_INTEGER =
+'Cannot convert number type to integer type'
+TYPE_ERROR_DISMATCH =
+'Type `{child}` cannot match `{parent}`'
 
 LUADOC_DESC_CLASS =
 [=[
@@ -588,7 +703,7 @@ Defines a class/table structure
 Manager = {}
 ```
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#class)
+[View Wiki](https://luals.github.io/wiki/annotations#class)
 ]=]
 LUADOC_DESC_TYPE =
 [=[
@@ -639,7 +754,7 @@ local x --x[""] is true
 local myFunction
 ```
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#types-and-type)
+[View Wiki](https://luals.github.io/wiki/annotations#type)
 ]=]
 LUADOC_DESC_ALIAS =
 [=[
@@ -674,8 +789,22 @@ function find(path, pattern) end
 ---@param style font-style Style to apply
 function setFontStyle(style) end
 ```
+
+### Literal Enum
+```
+local enums = {
+    READ = 0,
+    WRITE = 1,
+    CLOSED = 2
+}
+
+---@alias FileStates
+---| `enums.READ`
+---| `enums.WRITE`
+---| `enums.CLOSE`
+```
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#alias)
+[View Wiki](https://luals.github.io/wiki/annotations#alias)
 ]=]
 LUADOC_DESC_PARAM =
 [=[
@@ -700,7 +829,7 @@ function get(url, headers, timeout) end
 function concat(base, ...) end
 ```
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#param)
+[View Wiki](https://luals.github.io/wiki/annotations#param)
 ]=]
 LUADOC_DESC_RETURN =
 [=[
@@ -738,15 +867,16 @@ function getFirstLast() end
 function getTags(item) end
 ```
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#return)
+[View Wiki](https://luals.github.io/wiki/annotations#return)
 ]=]
 LUADOC_DESC_FIELD =
 [=[
 Declare a field in a class/table. This allows you to provide more in-depth
-documentation for a table.
+documentation for a table. As of `v3.6.0`, you can mark a field as `private`,
+`protected`, `public`, or `package`.
 
 ## Syntax
-`---@field <name> <type> [description]`
+`---@field [scope] <name> <type> [description]`
 
 ## Usage
 ```
@@ -768,7 +898,7 @@ response = get("localhost")
 statusCode = response.status.code
 ```
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#field)
+[View Wiki](https://luals.github.io/wiki/annotations#field)
 ]=]
 LUADOC_DESC_GENERIC =
 [=[
@@ -825,7 +955,7 @@ local v = Generic("Foo") -- v is an object of Foo
 -- we give for key (K) or value (V)
 ```
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#generics-and-generic)
+[View Wiki](https://luals.github.io/wiki/annotations/#generic)
 ]=]
 LUADOC_DESC_VARARG =
 [=[
@@ -844,7 +974,7 @@ provide typing or allow descriptions.
 function concat(...) end
 ```
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#vararg)
+[View Wiki](https://luals.github.io/wiki/annotations/#vararg)
 ]=]
 LUADOC_DESC_OVERLOAD =
 [=[
@@ -859,7 +989,7 @@ Allows defining of multiple function signatures.
 function table.insert(t, position, value) end
 ```
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#overload)
+[View Wiki](https://luals.github.io/wiki/annotations#overload)
 ]=]
 LUADOC_DESC_DEPRECATED =
 [=[
@@ -870,7 +1000,7 @@ being ~~struck through~~.
 `---@deprecated`
 
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#deprecated)
+[View Wiki](https://luals.github.io/wiki/annotations#deprecated)
 ]=]
 LUADOC_DESC_META =
 [=[
@@ -885,7 +1015,7 @@ There are 3 main distinctions to note with meta files:
 `---@meta`
 
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#meta)
+[View Wiki](https://luals.github.io/wiki/annotations#meta)
 ]=]
 LUADOC_DESC_VERSION =
 [=[
@@ -910,7 +1040,7 @@ function onlyWorksInJIT() end
 function oldLuaOnly() end
 ```
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#version)
+[View Wiki](https://luals.github.io/wiki/annotations#version)
 ]=]
 LUADOC_DESC_SEE =
 [=[
@@ -920,7 +1050,7 @@ Define something that can be viewed for more information
 `---@see <text>`
 
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#see)
+[View Wiki](https://luals.github.io/wiki/annotations#see)
 ]=]
 LUADOC_DESC_DIAGNOSTIC =
 [=[
@@ -928,7 +1058,7 @@ Enable/disable diagnostics for error/warnings/etc.
 
 Actions: `disable`, `enable`, `disable-line`, `disable-next-line`
 
-[Names](https://github.com/sumneko/lua-language-server/blob/cbb6e6224094c4eb874ea192c5f85a6cba099588/script/proto/define.lua#L54)
+[Names](https://github.com/LuaLS/lua-language-server/blob/cbb6e6224094c4eb874ea192c5f85a6cba099588/script/proto/define.lua#L54)
 
 ## Syntax
 `---@diagnostic <action>[: <name>]`
@@ -946,7 +1076,7 @@ local unused = "hello world"
 ---@diagnostic enable: unused-local
 ```
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#diagnostic)
+[View Wiki](https://luals.github.io/wiki/annotations#diagnostic)
 ]=]
 LUADOC_DESC_MODULE =
 [=[
@@ -963,7 +1093,7 @@ local stringUtils
 local module = require('string.utils')
 ```
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#module)
+[View Wiki](https://luals.github.io/wiki/annotations#module)
 ]=]
 LUADOC_DESC_ASYNC =
 [=[
@@ -973,7 +1103,7 @@ Marks a function as asynchronous.
 `---@async`
 
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#async)
+[View Wiki](https://luals.github.io/wiki/annotations#async)
 ]=]
 LUADOC_DESC_NODISCARD =
 [=[
@@ -985,7 +1115,7 @@ be ignored.
 `---@nodiscard`
 
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#nodiscard)
+[View Wiki](https://luals.github.io/wiki/annotations#nodiscard)
 ]=]
 LUADOC_DESC_CAST =
 [=[
@@ -1020,7 +1150,7 @@ local x --> string|table
 print(x) --> table
 ```
 ---
-[View Wiki](https://github.com/sumneko/lua-language-server/wiki/Annotations#cast)
+[View Wiki](https://luals.github.io/wiki/annotations#cast)
 ]=]
 LUADOC_DESC_OPERATOR =
 [=[
@@ -1050,12 +1180,12 @@ pA = Passcode.new(1234)
 pB = -pA
 --> integer
 ```
-[View Request](https://github.com/sumneko/lua-language-server/issues/599)
+[View Request](https://github.com/LuaLS/lua-language-server/issues/599)
 ]=]
 LUADOC_DESC_ENUM =
 [=[
 Mark a table as an enum. If you want an enum but can't define it as a Lua
-table, take a look at the [`@alias`](https://github.com/sumneko/lua-language-server/wiki/Annotations#alias)
+table, take a look at the [`@alias`](https://luals.github.io/wiki/annotations#alias)
 tag.
 
 ## Syntax
@@ -1077,5 +1207,105 @@ local function setColor(color) end
 
 -- Completion and hover is provided for the below param
 setColor(colors.green)
+```
+]=]
+LUADOC_DESC_SOURCE =
+[=[
+Provide a reference to some source code which lives in another file. When
+searching for the definition of an item, its `@source` will be used.
+
+## Syntax
+`@source <path>`
+
+## Usage
+```
+---You can use absolute paths
+---@source C:/Users/me/Documents/program/myFile.c
+local a
+
+---Or URIs
+---@source file:///C:/Users/me/Documents/program/myFile.c:10
+local b
+
+---Or relative paths
+---@source local/file.c
+local c
+
+---You can also include line and char numbers
+---@source local/file.c:10:8
+local d
+```
+]=]
+LUADOC_DESC_PACKAGE =
+[=[
+Mark a function as private to the file it is defined in. A packaged function
+cannot be accessed from another file.
+
+## Syntax
+`@package`
+
+## Usage
+```
+---@class Animal
+---@field private eyes integer
+local Animal = {}
+
+---@package
+---This cannot be accessed in another file
+function Animal:eyesCount()
+    return self.eyes
+end
+```
+]=]
+LUADOC_DESC_PRIVATE =
+[=[
+Mark a function as private to a @class. Private functions can be accessed only
+from within their class and are not accessible from child classes.
+
+## Syntax
+`@private`
+
+## Usage
+```
+---@class Animal
+---@field private eyes integer
+local Animal = {}
+
+---@private
+function Animal:eyesCount()
+    return self.eyes
+end
+
+---@class Dog:Animal
+local myDog = {}
+
+---NOT PERMITTED!
+myDog:eyesCount();
+```
+]=]
+LUADOC_DESC_PROTECTED =
+[=[
+Mark a function as protected within a @class. Protected functions can be
+accessed only from within their class or from child classes.
+
+## Syntax
+`@protected`
+
+## Usage
+```
+---@class Animal
+---@field private eyes integer
+local Animal = {}
+
+---@protected
+function Animal:eyesCount()
+    return self.eyes
+end
+
+---@class Dog:Animal
+local myDog = {}
+
+---Permitted because function is protected, not private.
+myDog:eyesCount();
 ```
 ]=]

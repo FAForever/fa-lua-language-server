@@ -16,9 +16,10 @@ local function getValue(value)
 end
 
 local function loadArgs()
+    ---@type string?
     local lastKey
     for _, v in ipairs(arg) do
-        ---@type string
+        ---@type string?
         local key, tail = v:match '^%-%-([%w_]+)(.*)$'
         local value
         if key then
@@ -35,7 +36,7 @@ local function loadArgs()
             end
         end
         if key then
-            _G[key:upper()] = getValue(value)
+            _G[key:upper():gsub('-', '_')] = getValue(value)
         end
     end
 end
@@ -69,9 +70,10 @@ log.info('METAPATH:', METAPATH)
 log.info('VERSION:', version.getVersion())
 
 require 'tracy'
-require 'cli'
 
 xpcall(dofile, log.debug, (ROOT / 'debugger.lua'):string())
+
+require 'cli'
 
 local _, service = xpcall(require, log.error, 'service')
 

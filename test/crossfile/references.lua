@@ -58,7 +58,7 @@ function TEST(datas)
     local sourceList
     local sourceUri
     for i, data in ipairs(datas) do
-        local uri = furi.encode(data.path)
+        local uri = furi.encode(TESTROOT .. data.path)
         local newScript, catched = catch(data.content, '!?~')
         if catched['!'] or catched['~'] then
             for _, position in ipairs(catched['!'] + catched['~']) do
@@ -74,16 +74,17 @@ function TEST(datas)
             sourceUri = uri
         end
         files.setText(uri, newScript)
+        files.compileState(uri)
     end
 
     local _ <close> = function ()
         for _, info in ipairs(datas) do
-            files.remove(furi.encode(info.path))
+            files.remove(furi.encode(TESTROOT .. info.path))
         end
     end
 
     local sourcePos = (sourceList[1][1] + sourceList[1][2]) // 2
-    local positions = core(sourceUri, sourcePos)
+    local positions = core(sourceUri, sourcePos, true)
     if positions then
         local result = {}
         for i, position in ipairs(positions) do
@@ -361,15 +362,30 @@ TEST {
     {
         path = 'a.lua',
         content = [[
-            local <~t~> = require 'b'
-            return <!t!>
+            local <~x~> = require 'b'
+            return <!x!>
         ]]
     },
     {
         path = 'b.lua',
         content = [[
-            local t = require 'a'
-            return t
+            local y = require 'a'
+            return y
         ]]
     },
+}
+
+TEST {
+    {
+        path = 'a.lua',
+        content = [[
+            ---@alias <~XX~> number
+        ]]
+    },
+    {
+        path = 'b.lua',
+        content = [[
+            ---@type <!XX!>
+        ]]
+    }
 }

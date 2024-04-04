@@ -8,6 +8,7 @@ local catch    = require 'catch'
 
 config.get(nil, 'Lua.diagnostics.neededFileStatus')['deprecated'] = 'Any'
 config.get(nil, 'Lua.diagnostics.neededFileStatus')['type-check'] = 'Any'
+config.get(nil, 'Lua.diagnostics.neededFileStatus')['duplicate-set-field'] = 'Any'
 config.get(nil, 'Lua.diagnostics.neededFileStatus')['codestyle-check'] = 'None'
 
 rawset(_G, 'TEST', true)
@@ -46,6 +47,7 @@ function TEST(datas)
         end
         data.content = newScript
         files.setText(uri, newScript)
+        files.compileState(uri)
     end
 
     local _ <close> = function ()
@@ -56,20 +58,26 @@ function TEST(datas)
 
 
     local results = {}
+    local origins = {}
     for _, data in ipairs(datas) do
         local uri = furi.encode(data.path)
         core(uri, false, function (result)
-            results[#results+1] = {
-                result.start,
-                result.finish,
-                uri,
-            }
+            if result.code == datas.code then
+                results[#results+1] = {
+                    result.start,
+                    result.finish,
+                    uri,
+                }
+            end
+            origins[#origins+1] = result
         end)
     end
+    assert(datas.code, 'Need code')
     assert(founded(targetList, results))
 end
 
 TEST {
+    code = 'different-requires',
     {
         path = 'f/a.lua',
         content = '',
@@ -85,6 +93,7 @@ TEST {
 }
 
 TEST {
+    code = 'different-requires',
     {
         path = 'f/a.lua',
         content = '',
@@ -104,6 +113,7 @@ TEST {
 }
 
 TEST {
+    code = 'different-requires',
     {
         path = 'a.lua',
         content = '',
@@ -123,6 +133,7 @@ TEST {
 }
 
 TEST {
+    code = 'different-requires',
     {
         path = 'a/init.lua',
         content = '',
@@ -139,4 +150,79 @@ TEST {
         path = 'c.lua',
         content = 'require "f.a"',
     },
+}
+
+TEST {
+    code = 'invisible',
+    { path = 'a.lua', content = [[
+        ---@class A
+        ---@field package x string
+
+        ---@type A
+        local obj
+
+        print(obj.x)
+    ]]},
+}
+
+TEST {
+    code = 'invisible',
+    { path = 'a.lua', content = [[
+        ---@class A
+        ---@field package x string
+    ]]},
+    { path = 'b.lua', content = [[
+        ---@type A
+        local obj
+
+        print(obj.<!x!>)
+    ]]}
+}
+
+TEST {
+    code = 'duplicate-doc-field',
+    { path = 'a.lua', content = [[
+        ---@class A
+        ---@field <!x!> number
+    ]]},
+    { path = 'b.lua', content = [[
+        ---@class A
+        ---@field <!x!> number
+    ]]}
+}
+
+TEST {
+    code = 'duplicate-set-field',
+    { path = 'a.lua', content = [[
+        ---@class A
+        local mt
+
+        function <!mt:init!>()
+        end
+    ]]},
+    { path = 'b.lua', content = [[
+        ---@class A
+        local mt
+
+        function <!mt:init!>()
+        end
+    ]]}
+}
+
+TEST {
+    code = 'duplicate-set-field',
+    { path = 'a.lua', content = [[
+        ---@class A
+        local mt
+
+        function mt:init()
+        end
+    ]]},
+    { path = 'b.lua', content = [[
+        ---@class B: A
+        local mt
+
+        function mt:init()
+        end
+    ]]}
 }

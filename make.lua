@@ -1,17 +1,24 @@
 local lm = require 'luamake'
 
-lm.bindir = "bin"
 lm.c = lm.compiler == 'msvc' and 'c89' or 'c11'
 lm.cxx = 'c++17'
 
----@diagnostic disable-next-line: codestyle-check
-lm.EXE_DIR = ""
+if lm.sanitize then
+    lm.mode = "debug"
+    lm.flags = "-fsanitize=address"
+    lm.gcc = {
+        ldflags = "-fsanitize=address"
+    }
+    lm.clang = {
+        ldflags = "-fsanitize=address"
+    }
+end
 
 local includeCodeFormat = true
 
 require "make.detect_platform"
 
-lm:import "3rd/bee.lua"
+lm:import "3rd/bee.lua/make.lua"
 lm:import "make/code_format.lua"
 
 lm:source_set 'lpeglabel' {
@@ -47,19 +54,28 @@ lm:executable "lua-language-server" {
     }
 }
 
+local platform = require 'bee.platform'
+local exe      = platform.os == 'windows' and ".exe" or ""
+
+lm:copy "copy_lua-language-server" {
+    inputs = "$bin/lua-language-server" .. exe,
+    outputs = "bin/lua-language-server" .. exe,
+}
+
 lm:copy "copy_bootstrap" {
-    input = "make/bootstrap.lua",
-    output = lm.bindir .. "/main.lua",
+    inputs = "make/bootstrap.lua",
+    outputs = "bin/main.lua",
 }
 
 lm:msvc_copydll 'copy_vcrt' {
     type = "vcrt",
-    output = lm.bindir,
+    outputs = "bin",
 }
 
 lm:phony "all" {
     deps = {
         "lua-language-server",
+        "copy_lua-language-server",
         "copy_bootstrap",
     },
     windows = {
@@ -76,26 +92,30 @@ if lm.notest then
     return
 end
 
-local platform = require 'bee.platform'
-local exe      = platform.OS == 'Windows' and ".exe" or ""
+lm:rule "run-bee-test" {
+    args = { "$bin/lua-language-server" .. exe, "$in" },
+    description = "Run test: $in.",
+    pool = "console",
+}
+
+lm:rule "run-unit-test" {
+    args = { "bin/lua-language-server" .. exe, "$in" },
+    description = "Run test: $in.",
+    pool = "console",
+}
 
 lm:build "bee-test" {
-    lm.bindir .. "/lua-language-server" .. exe, "3rd/bee.lua/test/test.lua",
-    pool = "console",
-    deps = {
-        "all",
-    }
+    rule = "run-bee-test",
+    deps = { "lua-language-server", "copy_script" },
+    inputs = "3rd/bee.lua/test/test.lua",
 }
 
 lm:build 'unit-test' {
-    lm.bindir .. "/lua-language-server" .. exe, 'test.lua',
-    pool = "console",
-    deps = {
-        "bee-test",
-    }
+    rule = "run-unit-test",
+    deps = { "bee-test", "all" },
+    inputs = "test.lua",
 }
 
 lm:default {
-    "bee-test",
     "unit-test",
 }

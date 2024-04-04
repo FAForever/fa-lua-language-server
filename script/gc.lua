@@ -1,12 +1,13 @@
 local util = require 'utility'
 
 ---@class gc
----@field _list table
+---@field package _list table
 local mt = {}
 mt.__index = mt
 mt.type = 'gc'
 mt._removed = false
 
+---@package
 mt._max = 10
 
 local function destroyGCObject(obj)
@@ -27,7 +28,9 @@ local function isRemoved(obj)
         for i = 1, 1000 do
             local n, v = debug.getupvalue(obj, i)
             if not n then
-                log.warn('函数式析构器没有 removed 上值！', util.dump(debug.getinfo(obj)))
+                if i > 1 then
+                    log.warn('函数式析构器没有 removed 上值！', util.dump(debug.getinfo(obj)))
+                end
                 break
             end
             if n == 'removed' then

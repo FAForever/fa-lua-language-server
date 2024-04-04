@@ -3,21 +3,27 @@ local files    = require 'files'
 local vm       = require 'vm.vm'
 local ws       = require 'workspace.workspace'
 local guide    = require 'parser.guide'
+local timer    = require 'timer'
+local util     = require 'utility'
 
 ---@type table<vm.object, vm.node>
-vm.nodeCache = {}
+vm.nodeCache = setmetatable({}, util.MODE_K)
 
----@alias vm.node.object vm.object | vm.global
+---@alias vm.node.object vm.object | vm.global | vm.variable
 
 ---@class vm.node
 ---@field [integer] vm.node.object
 ---@field [vm.node.object] true
+---@field fields? table<vm.node|string, vm.node>
+---@field undefinedGlobal boolean?
 local mt = {}
 mt.__index    = mt
 mt.id         = 0
 mt.type       = 'vm.node'
 mt.optional   = nil
 mt.data       = nil
+mt.hasDefined = nil
+mt.originNode = nil
 
 ---@param node vm.node | vm.node.object
 ---@return vm.node
@@ -53,6 +59,19 @@ function mt:isEmpty()
     return #self == 0
 end
 
+---@return boolean
+function mt:isTyped()
+    for _, c in ipairs(self) do
+        if c.type == 'global' and c.cate == 'type' then
+            return true
+        end
+        if guide.isLiteral(c) then
+            return true
+        end
+    end
+    return false
+end
+
 function mt:clear()
     self.optional = nil
     for i, c in ipairs(self) do
@@ -65,21 +84,6 @@ end
 ---@return vm.node.object?
 function mt:get(n)
     return self[n]
-end
-
-function mt:setData(k, v)
-    if not self.data then
-        self.data = {}
-    end
-    self.data[k] = v
-end
-
----@return any
-function mt:getData(k)
-    if not self.data then
-        return nil
-    end
-    return self.data[k]
 end
 
 function mt:addOptional()
@@ -245,7 +249,8 @@ function mt:remove(name)
         or (c.type == 'doc.type.table'    and name == 'table')
         or (c.type == 'doc.type.array'    and name == 'table')
         or (c.type == 'doc.type.sign'     and name == c.node[1])
-        or (c.type == 'doc.type.function' and name == 'function') then
+        or (c.type == 'doc.type.function' and name == 'function')
+        or (c.type == 'doc.type.string'   and name == 'string') then
             table.remove(self, index)
             self[c] = nil
         end
@@ -253,9 +258,10 @@ function mt:remove(name)
     return self
 end
 
+---@param uri uri
 ---@param name string
-function mt:narrow(name)
-    if name ~= 'nil' and self.optional == true then
+function mt:narrow(uri, name)
+    if self.optional == true then
         self.optional = nil
     end
     for index = #self, 1, -1 do
@@ -266,12 +272,13 @@ function mt:narrow(name)
         or (c.type == 'doc.type.table'    and name == 'table')
         or (c.type == 'doc.type.array'    and name == 'table')
         or (c.type == 'doc.type.sign'     and name == c.node[1])
-        or (c.type == 'doc.type.function' and name == 'function') then
+        or (c.type == 'doc.type.function' and name == 'function')
+        or (c.type == 'doc.type.string'   and name == 'string') then
             goto CONTINUE
         end
         if c.type == 'global' and c.cate == 'type' then
             if (c.name == name)
-            or (c.name == 'integer' and name == 'number') then
+            or (vm.isSubType(uri, c.name, name)) then
                 goto CONTINUE
             end
         end
@@ -285,7 +292,7 @@ function mt:narrow(name)
     return self
 end
 
----@param obj vm.object
+---@param obj vm.object | vm.variable
 function mt:removeObject(obj)
     for index, c in ipairs(self) do
         if c == obj then
@@ -391,7 +398,7 @@ function mt:copy()
     return vm.createNode(self)
 end
 
----@param source vm.object
+---@param source vm.node.object | vm.generic
 ---@param node vm.node | vm.node.object
 ---@param cover? boolean
 ---@return vm.node
@@ -422,7 +429,7 @@ function vm.setNode(source, node, cover)
     return me
 end
 
----@param source vm.object
+---@param source vm.node.object
 ---@return vm.node?
 function vm.getNode(source)
     return vm.nodeCache[source]
@@ -475,10 +482,22 @@ function vm.createNode(a, b)
     return node
 end
 
+---@type timer?
+local delayTimer
 files.watch(function (ev, uri)
     if ev == 'version' then
         if ws.isReady(uri) then
-            vm.clearNodeCache()
+            if CACHEALIVE then
+                if delayTimer then
+                    delayTimer:restart()
+                end
+                delayTimer = timer.wait(1, function ()
+                    delayTimer = nil
+                    vm.clearNodeCache()
+                end)
+            else
+                vm.clearNodeCache()
+            end
         end
     end
 end)

@@ -1,6 +1,9 @@
 local define     = require 'proto.define'
 local files      = require 'files'
 local guide      = require 'parser.guide'
+local config     = require 'config'
+local util       = require 'utility'
+local lookback   = require 'core.look-backward'
 
 local keyWordMap = {
     { 'do', function(info, results)
@@ -324,6 +327,84 @@ end"
         end
         return true
     end },
+    { 'continue', function (info, results)
+        local nonstandardSymbol = config.get(info.uri, 'Lua.runtime.nonstandardSymbol')
+        if util.arrayHas(nonstandardSymbol, 'continue') then
+            return
+        end
+        local version = config.get(info.uri, 'Lua.runtime.version')
+        if version == 'Lua 5.1' then
+            return
+        end
+        local mostInsideBlock
+        guide.eachSourceContain(info.state.ast, info.start, function (src)
+            if src.type == 'while'
+            or src.type == 'in'
+            or src.type == 'loop'
+            or src.type == 'repeat' then
+                mostInsideBlock = src
+            end
+        end)
+        if not mostInsideBlock then
+            return
+        end
+        -- 找一下 end 的位置
+        local endPos
+        if mostInsideBlock.type == 'while' then
+            endPos = mostInsideBlock.keyword[5]
+        elseif mostInsideBlock.type == 'in' then
+            endPos = mostInsideBlock.keyword[7]
+        elseif mostInsideBlock.type == 'loop' then
+            endPos = mostInsideBlock.keyword[5]
+        elseif mostInsideBlock.type == 'repeat' then
+            endPos = mostInsideBlock.keyword[3]
+        end
+        if not endPos then
+            return
+        end
+        local endLine     = guide.rowColOf(endPos)
+        local tabStr = info.state.lua:sub(
+            info.state.lines[endLine],
+            guide.positionToOffset(info.state, endPos)
+        )
+        local newText
+        if tabStr:match '^[\t ]*$' then
+            newText = '    ::continue::\n' .. tabStr
+        else
+            newText = '::continue::'
+        end
+        local additional = {}
+
+        local word = lookback.findWord(info.state.lua, guide.positionToOffset(info.state, info.start) - 1)
+        if word ~= 'goto' then
+            additional[#additional+1] = {
+                start   = info.start,
+                finish  = info.start,
+                newText = 'goto ',
+            }
+        end
+
+        local hasContinue = guide.eachSourceType(mostInsideBlock, 'label', function (src)
+            if src[1] == 'continue' then
+                return true
+            end
+        end)
+
+        if not hasContinue then
+            additional[#additional+1] = {
+                start   = endPos,
+                finish  = endPos,
+                newText = newText,
+            }
+        end
+        results[#results+1] = {
+            label      = 'goto continue ..',
+            kind       = define.CompletionItemKind.Snippet,
+            insertText = "continue",
+            additionalTextEdits = additional,
+        }
+        return true
+    end }
 }
 
 return keyWordMap
